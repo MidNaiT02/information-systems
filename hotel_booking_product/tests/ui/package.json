@@ -1,0 +1,6 @@
+{
+  "name": "hotel-booking-ui-smoke-test",
+  "private": true,
+  "scripts": { "test": "node ui_smoke.test.js" },
+  "dependencies": { "jsdom": "^26.0.0" }
+}
