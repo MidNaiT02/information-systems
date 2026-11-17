@@ -14,6 +14,7 @@ from urllib.parse import parse_qs
 from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 
 import db
+import features
 import security
 
 FRONTEND = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend")
@@ -86,12 +87,18 @@ def api_book(c):
     mail = db.get_email(c.conn, res["email_id"])
     res["email"] = {"to": mail["to_email"], "status": mail["status"], "channel": mail["channel"],
                     "sent_at": mail["sent_at"]}
+    res["pass"] = features.pass_for(c.conn, res["reservation_id"])
     return 201, res
 
 
 def api_lookup(c):
     d = db.find_guest_reservation(c.conn, c.body.get("reservation_id"), c.body.get("email", ""), c.now)
+    d["pass"] = features.pass_for(c.conn, d["reservation_id"]) if d["status"] == "Confirmed" else None
     return 200, d
+
+
+def api_price_calendar(c):
+    return 200, features.price_calendar(c.conn, c.q("check_in"), c.q("check_out"), c.q("flex", "3"), c.today)
 
 
 def api_guest_cancel(c):
@@ -227,6 +234,47 @@ def api_staff_resend_email(c):
     return 200, {"email_id": new_id, "status": mail["status"], "channel": mail["channel"], "to": mail["to_email"]}
 
 
+def api_staff_floor_map(c):
+    return 200, features.floor_map(c.conn, c.q("date").strip() or None, c.now)
+
+
+def api_staff_housekeeping(c):
+    return 200, features.housekeeping_board(c.conn, c.now)
+
+
+def api_staff_set_housekeeping(c):
+    result = features.set_housekeeping(c.conn, int(c.params[0]), str(c.body.get("status", "")), c.now)
+    db.audit(c.conn, c.user["email"], "housekeeping", f"room {result['room_number']}: {result['old']} -> {result['new']}")
+    return 200, result
+
+
+def api_staff_pass_lookup(c):
+    rid = features.resolve_pass(c.conn, c.q("code"))
+    d = features.stay_state(c.conn, rid, c.now)
+    return 200, d
+
+
+def api_staff_check_in(c):
+    rid = int(c.params[0])
+    if c.body.get("code"):
+        if features.resolve_pass(c.conn, c.body.get("code")) != rid:
+            raise db.BookingError("This pass belongs to another reservation.", 409, "bad_pass")
+    d = features.check_in(c.conn, rid, c.now)
+    db.audit(c.conn, c.user["email"], "check_in", f"reservation {rid}, room {d['room_number']}")
+    return 200, d
+
+
+def api_staff_check_out(c):
+    rid = int(c.params[0])
+    d = features.check_out(c.conn, rid, c.now)
+    db.audit(c.conn, c.user["email"], "check_out", f"reservation {rid}, room {d['room_number']} is now Dirty")
+    return 200, d
+
+
+def api_manager_price_suggestions(c):
+    return 200, features.price_suggestions(c.conn, c.today)
+
+
 def api_manager_export(c):
     text, count = db.reservations_csv(c.conn, c.q("status"), c.q("q"), c.q("from") or None, c.q("to") or None, c.q("order", "desc"))
     db.audit(c.conn, c.user["email"], "export_csv", f"{count} reservations")
@@ -271,6 +319,14 @@ ROUTES = [  # method, regex, handler, access ("public", "staff", "manager")
     ("POST", r"/api/staff/reservations/(\d+)/cancel", api_staff_cancel, "staff"),
     ("POST", r"/api/staff/reservations/(\d+)/modify", api_staff_modify, "staff"),
     ("GET", r"/api/staff/calendar", api_staff_calendar, "staff"),
+    ("GET", r"/api/rooms/price-calendar", api_price_calendar, "public"),
+    ("GET", r"/api/staff/floor-map", api_staff_floor_map, "staff"),
+    ("GET", r"/api/staff/housekeeping", api_staff_housekeeping, "staff"),
+    ("POST", r"/api/staff/rooms/(\d+)/housekeeping", api_staff_set_housekeeping, "staff"),
+    ("GET", r"/api/staff/passes/lookup", api_staff_pass_lookup, "staff"),
+    ("POST", r"/api/staff/reservations/(\d+)/check-in", api_staff_check_in, "staff"),
+    ("POST", r"/api/staff/reservations/(\d+)/check-out", api_staff_check_out, "staff"),
+    ("GET", r"/api/manager/price-suggestions", api_manager_price_suggestions, "manager"),
     ("GET", r"/api/staff/emails", api_staff_emails, "staff"),
     ("POST", r"/api/staff/emails/(\d+)/resend", api_staff_resend_email, "staff"),
     ("POST", r"/api/auth/password", api_change_password, "staff"),

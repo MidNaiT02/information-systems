@@ -68,12 +68,15 @@ def init_db(path=None, reset=False, demo_data=True, today=None, records=None):
         conn.execute("PRAGMA journal_mode = WAL")
         with open(SCHEMA, encoding="utf-8") as f:
             conn.executescript(f.read())
+        import features
+        features.ensure_columns(conn)
         for name, role, email, password in STAFF_SEED:
             salt, digest = security.hash_password(password)
             conn.execute("INSERT INTO staff(full_name, role, email, salt, password_hash) VALUES (?,?,?,?,?)",
                          (name, role, email, salt, digest))
         if demo_data:
             seed_demo_data(conn, today or date.today(), records)
+        features.seed_housekeeping(conn, today or date.today())
     finally:
         conn.close()
     return True
@@ -91,6 +94,9 @@ def migrate(path):
                              total_price / MAX(1, CAST(julianday(check_out) - julianday(check_in) AS INTEGER))""")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_res_checkin ON reservations(check_in)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_pay_date ON payments(payment_date)")
+        import features
+        if features.ensure_columns(conn):          # housekeeping and check-in columns were just added
+            features.seed_housekeeping(conn)
     finally:
         conn.close()
 

@@ -40,13 +40,20 @@ Demo staff accounts (change the passwords before any real use, see "Settings"):
 | Who | Page | What it does |
 |---|---|---|
 | Guest | Rooms | Search free rooms for two dates (one card per room type with the number of free rooms), book a room, see the reservation number |
+| Guest | Rooms, Flexible dates | Under the search results: the same number of nights starting up to 7 days earlier or later, with the price and free rooms per room type. The cheapest option is marked, "Use these dates" searches again |
+| Guest | Booking confirmation, My booking | A QR check-in pass and a pass code like `HB123-A1B2C3` (shown while the reservation is Confirmed) |
+| Guest, front desk, manager | Guide (button at the bottom right) | A small offline helper that explains where things are for the current role, opens the right page and answers a few live questions (free rooms tonight, dirty rooms, price suggestions). Rule based, no internet, nothing leaves the page |
 | Guest | My booking | Find a booking with its number and email, cancel it free of charge until 24 hours before check-in |
 | Front desk | Staff, Reservations | Works with all 5,000 records page by page (25, 50 or 100 rows). Filter by status, text and check-in dates, sort, change dates, cancel |
+| Front desk | Staff, Floor map | All 161 rooms by floor for any date: free, arriving, occupied, departing, maintenance, and an orange dot for dirty rooms. Click a room for its guest, the next booking and quick actions |
+| Front desk | Staff, Housekeeping | A room becomes Dirty when the guest checks out (or at 12:00 on the check-out day), then Clean, then Inspected. The board lists what to clean today, rooms with a guest arriving today first |
+| Front desk | Staff, Check-in | Scan the guest's QR pass (barcode scanner, or the camera in Chrome/Edge), or type the pass code or reservation number. Check in and check out; a dirty room gives a warning |
 | Front desk | Staff, Email outbox | See every confirmation email, and send it again with one click if the guest did not get it |
 | Front desk and manager | Account | Change your own password. Until then a warning shows that the demo password is still in use |
 | Manager | Staff, Dashboard | Occupancy, revenue, most booked room types, arrivals, blocked double bookings, activity log. Shows the date of the first reservation ever and can be filtered by dates (From, To, "Since first reservation", "All time") |
 | Manager | Staff, Reservations, Download CSV | Export all reservations that match the current filters (up to 50,000 rows) for Excel |
 | Manager | Staff, Prices | Change the price per night of a room type. It applies to new bookings only |
+| Manager | Staff, Prices, Price suggestions | A rule-based hint per room type, for example "Suite is 92% full next weekend, raise by 10%", with an Apply button. Nothing changes by itself |
 
 ### Dashboard date filter
 
@@ -54,6 +61,20 @@ Without dates the dashboard shows all time (occupancy: the next 30 days). With d
 reservations count by check-in date, revenue by payment date (paid minus refunded), occupancy is booked nights divided by
 available rooms times the days of the period. Only a start date means "until the last booked day", only an end date means "from the first reservation".
 The first reservation date is the earliest check-in date in the database. The arrivals list always shows the next 7 days.
+
+### Price suggestions
+
+Occupancy is booked room-nights divided by available room-nights of a room type (rooms under maintenance are left out). The rules, in order:
+the busiest of next weekend (Friday to Sunday) and the next 7 days is 90% full or more: raise 10%; 75% or more: raise 5%; the next 30 days are at least 1.5 times
+fuller than the hotel's own last-year average and at least 25% full: raise 5%; at most 0.25 times the average: lower 10%, at most 0.5 times: lower 5%; otherwise keep.
+Types with fewer than 5 rooms (the President room) only use the sell-out rules. Prices are rounded to 500 KZT. Applying a suggestion uses the normal price change, so existing reservations keep their price.
+
+### Check-in pass, check-out and housekeeping
+
+The pass code is `HB<reservation number>-<6 characters>`, made from the reservation number, the guest's email and the booking time, so a code cannot be guessed from the number.
+The QR image is made by the server (`backend/qr.py`, standard library only). Check-in is possible from 14:00 rules: on the check-in date up to the day before check-out, only for Confirmed reservations.
+Check-out sets the room to Dirty. Rooms whose stay reaches 12:00 on the check-out day without a manual check-out become Dirty automatically.
+Order of room states: Dirty, then Clean, then Inspected (a room can be reported Dirty again from Clean or Inspected). Old databases get the new columns when the server starts.
 
 ### Changing prices
 
@@ -102,8 +123,12 @@ Leaving on the day another guest arrives is allowed.
     backend/db.py            business logic: search, booking, cancel, modify, dashboard
     backend/security.py      password hashing and sessions
     backend/schema.sql       tables, rules, triggers, reference data
+    backend/features.py      floor map, housekeeping, pass and check-in, price calendar, price suggestions
+    backend/qr.py            QR code encoder (standard library only)
     frontend/index.html, styles.css, app.js    the web app (no build step)
+    frontend/assistant.js    the navigation guide
     tests/test_api.py        92 tests (backend, API, security, prices, dashboard filter, 5,000 records and paging)
+    tests/test_features.py   25 tests (QR encoder, pass and check-in, housekeeping, floor map, price calendar, price suggestions)
     tests/ui/                browser-style test of the real pages (needs Node.js)
     tools/measure_search.py  speed measurement for NFR-01
     tools/check_database.py  row counts and integrity checks of the database
@@ -124,15 +149,22 @@ Leaving on the day another guest arrives is allowed.
 | POST /api/staff/reservations/{id}/cancel, /modify | Staff | Change a reservation |
 | GET /api/manager/dashboard?from=&to= | Manager | Dashboard figures, optionally for a period (YYYY-MM-DD), with `first_reservation_date` |
 | GET /api/manager/audit | Manager | Activity log |
+| GET /api/manager/price-suggestions | Manager | Price suggestions per room type with occupancy figures and the rules |
+| GET /api/rooms/price-calendar?check_in=&check_out=&flex= | Guest | Nearby date windows (flex 1 to 7 days) with free rooms and price per room type |
+| GET /api/staff/floor-map?date= | Staff | State of every room for one day |
+| GET /api/staff/housekeeping | Staff | Housekeeping board for today |
+| POST /api/staff/rooms/{id}/housekeeping | Staff | Body `{"status": "Clean"}`: Dirty to Clean to Inspected, or report Dirty |
+| GET /api/staff/passes/lookup?code= | Staff | Reservation for a pass code or number, and what can be done now |
+| POST /api/staff/reservations/{id}/check-in, /check-out | Staff | Check in (optional `code`) or check out (room becomes Dirty) |
 | GET /api/manager/room-types | Manager | Room types with number of rooms and price per night |
 | POST /api/manager/room-types/{id}/price | Manager | Change the price per night (body: `{"price": 45000}`), new bookings only |
 
 ## Tests
 
-    py -m unittest discover -s tests -v          # 92 tests
+    py -m unittest discover -s tests -v          # 117 tests
     py tools/measure_search.py                   # NFR-01 measurement
 
-Browser-style test of the real pages, 54 checks including paging through the 5,000 records, the dashboard date filter, price changes, resending emails, CSV download and changing the password (needs Node.js 18 or newer).
+Browser-style test of the real pages (`ui_smoke.test.js` 54 checks, `ui_features.test.js` 32 checks for the new pages and the guide; run the second one on a fresh database), including paging through the 5,000 records, the dashboard date filter, price changes, resending emails, CSV download and changing the password (needs Node.js 18 or newer).
 Use a throwaway database, because the test makes bookings:
 
     # terminal 1
@@ -164,7 +196,9 @@ A restore keeps the old database next to it as `.before_restore_<time>`. See DEP
 
 - It runs on one computer. For real use follow DEPLOYMENT.md (HTTPS reverse proxy, start at boot, nightly backups). The guide was written but has not been tried on a real server yet.
 - The booking page is for demo payments only. A real payment provider is not connected.
-- The ID scanner and keycard encoder from the hardware plan are not connected.
+- The ID scanner and keycard encoder from the hardware plan are not connected. The QR pass works with a barcode scanner that types the code; camera scanning needs a browser with `BarcodeDetector` (Chrome, Edge) and localhost or HTTPS.
+- Room prices are the same on every date, so the Flexible dates table shows differences only when a room type is sold out on some of the dates. Weekend or season prices would make it more useful.
+- The guide is rule based (keywords and typo tolerance), not a language model. It knows the topics listed in `frontend/assistant.js`.
 - Backups are not encrypted by this program.
 - Search speed was measured on the database only, without a network.
 - The login pause after wrong passwords is kept in memory and resets when the server restarts.

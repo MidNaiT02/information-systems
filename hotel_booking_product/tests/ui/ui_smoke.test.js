@@ -12,6 +12,7 @@ async function newBrowser(hash = '') {
   const dom = new JSDOM(html, {
     url: BASE + '/' + hash, runScripts: 'outside-only', pretendToBeVisual: true,
     beforeParse(window) {
+      window.scrollTo = () => {};
       window.HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
       window.HTMLDialogElement.prototype.close = function () { if (this.hasAttribute('open')) { this.removeAttribute('open'); this.dispatchEvent(new window.Event('close')); } };
       Object.defineProperty(window.HTMLDialogElement.prototype, 'open', { get() { return this.hasAttribute('open'); } });

@@ -106,6 +106,50 @@
   }
   window.addEventListener('hashchange', () => render(true));
 
+
+  // ---------------------------------------------------------------- QR pass and flexible dates (guest)
+  const dayLabel = s => new Date(s + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+  // The QR image is an SVG made by our own server (only squares, no scripts), so it is inserted as is.
+  function passHtml(p) {
+    if (!p) return '';
+    return `<div class="pass"><div class="qr">${p.qr_svg}</div><div><b>Check-in pass</b><br><code>${esc(p.code)}</code>
+      <p class="meta">Show this QR code, or read the code out, at the front desk to check in faster.</p></div></div>`;
+  }
+
+  async function loadFlex(ci, co, flex = 3) {
+    const box = $('#flex');
+    if (!box) return;
+    box.innerHTML = '<div class="empty">Comparing nearby dates...</div>';
+    try {
+      const d = await api(`/api/rooms/price-calendar?check_in=${encodeURIComponent(ci)}&check_out=${encodeURIComponent(co)}&flex=${flex}`);
+      if (!$('#flex')) return;
+      const cell = c => c.total_price == null
+        ? '<td class="flex-sold">Sold out</td>'
+        : `<td class="num"><b>${esc(money(c.total_price))}</b><div class="sub">${plural(c.free, 'room')} free</div></td>`;
+      box.innerHTML = `<div class="panel stack"><div class="flex-head"><h3>Flexible dates</h3>
+        <label class="field inline"><span>Shift by</span><select id="flex-range" aria-label="Days to shift">${[1, 3, 5, 7].map(n => `<option value="${n}"${n === d.flex ? ' selected' : ''}>&plusmn;${n} days</option>`).join('')}</select></label></div>
+        <p class="meta">Same ${plural(d.nights, 'night')}, started on a different day. ${d.prices_vary
+          ? 'The cheapest option is marked.'
+          : 'Room prices are the same on every date, so shifting helps only when your room type is sold out.'}</p>
+        <div class="table-wrap"><table class="flex-table"><caption class="sr">Prices for nearby dates</caption>
+        <thead><tr><th>Stay</th>${d.types.map(t => `<th class="num">${esc(t)}</th>`).join('')}<th></th></tr></thead><tbody>
+        ${d.windows.map(w => `<tr class="${w.selected ? 'flex-selected' : ''}${w.tag ? ' flex-' + w.tag : ''}">
+          <td>${esc(dayLabel(w.check_in))} to ${esc(dayLabel(w.check_out))}${w.selected ? ' <span class="chip Confirmed">Your dates</span>' : ''}${w.tag === 'cheapest' ? ' <span class="chip Pending">Cheapest</span>' : ''}</td>
+          ${w.cells.map(cell).join('')}
+          <td>${w.selected || w.tag === 'sold_out' ? '' : `<button class="btn small" type="button" data-flex-in="${esc(w.check_in)}" data-flex-out="${esc(w.check_out)}">Use these dates</button>`}</td></tr>`).join('')}
+        </tbody></table></div></div>`;
+      $('#flex-range').addEventListener('change', e => loadFlex(ci, co, Number(e.target.value)));
+      box.onclick = e => {
+        const b = e.target.closest('[data-flex-in]');
+        if (!b) return;
+        $('#ci').value = b.dataset.flexIn; $('#co').value = b.dataset.flexOut;
+        $('#ci').dispatchEvent(new Event('input'));
+        doSearch();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+    } catch (err) { box.innerHTML = alertHtml(err.message); }
+  }
+
   // ---------------------------------------------------------------- guest: search and book
   function viewHome() {
     const s = state.search;
@@ -169,7 +213,8 @@
     const s = state.search, box = $('#results');
     if (!s || !box) return;
     if (!s.rooms.length) {
-      box.innerHTML = '<div class="notice"><b>No rooms are free for these dates.</b> Try other dates, or a shorter stay.</div>';
+      box.innerHTML = '<div class="notice"><b>No rooms are free for these dates.</b> Try other dates, or a shorter stay.</div><div id="flex"></div>';
+      loadFlex(s.ci, s.co);
       return;
     }
     const groups = [];                    // one card per room type, showing one free room of that type
@@ -178,7 +223,8 @@
       if (g) g.free++; else groups.push({ room: r, free: 1 });
     }
     box.innerHTML = `<p class="meta count">${plural(s.rooms.length, 'room')} free from ${fmtDate(s.ci)} to ${fmtDate(s.co)}. Pick a room type; one free room of that type is shown.</p>
-      <ul class="plaques">${groups.map(g => plaqueHtml(g.room, s.nights, g.free)).join('')}</ul>`;
+      <ul class="plaques">${groups.map(g => plaqueHtml(g.room, s.nights, g.free)).join('')}</ul><div id="flex"></div>`;
+    loadFlex(s.ci, s.co);
   }
 
   let lastAlternatives = [];
@@ -254,6 +300,7 @@
         <dt>Room</dt><dd>${esc(d.room_number)}, ${esc(d.type_name)}</dd>
         <dt>Stay</dt><dd>${fmtDate(d.check_in)} to ${fmtDate(d.check_out)} (${plural(d.nights, 'night')})</dd>
         <dt>Paid</dt><dd>${money(d.total_price)}</dd></dl></div>
+      ${passHtml(d.pass)}
       <p>${esc(mailText)}</p>
       <p class="meta">Free cancellation until 24 hours before check-in (14:00).</p>
       <div class="actions"><a class="btn" href="#/manage">Manage this booking</a>
@@ -298,7 +345,7 @@
           <dt>Room</dt><dd>${esc(d.room_number)}, ${esc(d.type_name)}</dd>
           <dt>Stay</dt><dd>${fmtDate(d.check_in)} to ${fmtDate(d.check_out)} (${plural(d.nights, 'night')})</dd>
           <dt>Price</dt><dd>${money(d.total_price)}</dd>
-          <dt>Paid</dt><dd>${money(d.paid)}</dd></dl></div>${action}</div>`;
+          <dt>Paid</dt><dd>${money(d.paid)}</dd></dl></div>${passHtml(d.pass)}${action}</div>`;
       const cancel = $('#guest-cancel');
       if (cancel) cancel.addEventListener('click', async () => {
         const r = await confirmDialog({ title: `Cancel reservation #${d.reservation_id}?`, message: `Your stay on ${fmtDate(d.check_in)} will be cancelled and ${money(d.paid)} refunded.`, confirm: 'Cancel booking', danger: true });
@@ -318,16 +365,19 @@
     if (!state.user) return viewLogin();
     const manager = state.user.role === 'Manager';
     if ((sub === 'dashboard' || sub === 'prices') && !manager) sub = 'reservations';
-    if (!['reservations', 'calendar', 'outbox', 'dashboard', 'prices'].includes(sub)) sub = 'reservations';
+    if (!['reservations', 'calendar', 'floor', 'housekeeping', 'checkin', 'outbox', 'dashboard', 'prices'].includes(sub)) sub = 'reservations';
     const tab = (key, label) => `<a href="#/staff/${key}"${sub === key ? ' aria-current="page"' : ''}>${label}</a>`;
     app.innerHTML = `<h1>Staff area</h1>
       ${state.user.default_password ? '<div class="notice" role="alert"><b>You are using the demo password.</b> Anyone who has read the README can log in as you. <button type="button" class="link" id="change-now">Change it now</button></div>' : ''}
-      <nav class="tabs" aria-label="Staff sections">${tab('reservations', 'Reservations')}${tab('calendar', 'Calendar')}${tab('outbox', 'Email outbox')}${manager ? tab('dashboard', 'Dashboard') + tab('prices', 'Prices') : ''}</nav>
+      <nav class="tabs" aria-label="Staff sections">${tab('reservations', 'Reservations')}${tab('calendar', 'Calendar')}${tab('floor', 'Floor map')}${tab('housekeeping', 'Housekeeping')}${tab('checkin', 'Check-in')}${tab('outbox', 'Email outbox')}${manager ? tab('dashboard', 'Dashboard') + tab('prices', 'Prices') : ''}</nav>
       <div id="panel"></div>`;
     const changeNow = $('#change-now');
     if (changeNow) changeNow.addEventListener('click', openPasswordDialog);
     if (sub === 'reservations') await panelReservations();
     else if (sub === 'calendar') await panelCalendar();
+    else if (sub === 'floor') await panelFloor();
+    else if (sub === 'housekeeping') await panelHousekeeping();
+    else if (sub === 'checkin') await panelCheckin();
     else if (sub === 'outbox') await panelOutbox();
     else if (sub === 'prices') await panelPrices();
     else await panelDashboard();
@@ -683,6 +733,189 @@
     } catch (err) { panel.innerHTML = alertHtml(err.message); }
   }
 
+
+  // ---- stay actions shared by the floor map, the check-in tab and the housekeeping board
+  const HK_NEXT = { Dirty: ['Clean', 'Mark clean'], Clean: ['Inspected', 'Mark inspected'] };
+  async function hkSet(roomId, status) {
+    const res = await staffCall(() => api(`/api/staff/rooms/${roomId}/housekeeping`, { method: 'POST', body: { status } }));
+    if (res) toast(`Room ${res.room_number} is now ${res.new}.`);
+    return res;
+  }
+  const hkChip = h => `<span class="chip hk-${esc(h)}">${esc(h)}</span>`;
+
+  function stayCardHtml(d) {
+    const note = d.checked_out_at ? `Checked out ${esc(d.checked_out_at.slice(0, 16))}.`
+      : d.checked_in_at ? `Checked in ${esc(d.checked_in_at.slice(0, 16))}.` : esc(d.check_in_blocked || 'Ready for check-in.');
+    return `<div class="panel stack" id="stay-card" data-id="${esc(d.reservation_id)}"><h3>Reservation #${esc(d.reservation_id)} <span class="chip ${esc(d.status)}">${esc(d.status)}</span></h3>
+      <div class="summary"><dl>
+        <dt>Guest</dt><dd>${esc(d.full_name)}</dd>
+        <dt>Room</dt><dd>${esc(d.room_number)}, ${esc(d.type_name)} ${hkChip(d.housekeeping)}</dd>
+        <dt>Stay</dt><dd>${fmtDate(d.check_in)} to ${fmtDate(d.check_out)} (${plural(d.nights, 'night')})</dd>
+        <dt>Status</dt><dd>${note}</dd></dl></div>
+      ${d.can_check_in && !d.room_ready ? `<div class="notice">Room ${esc(d.room_number)} is still dirty. Check-in is possible, but tell housekeeping first.</div>` : ''}
+      <div class="actions">${d.can_check_in ? '<button class="btn" type="button" data-stay="check-in">Check in</button>' : ''}
+        ${d.can_check_out ? '<button class="btn secondary" type="button" data-stay="check-out">Check out (room becomes dirty)</button>' : ''}</div></div>`;
+  }
+  async function stayAction(root, id, action, code, done) {
+    try {
+      const res = await staffCall(() => api(`/api/staff/reservations/${id}/${action}`, { method: 'POST', body: code ? { code } : {} }));
+      if (!res) return;
+      toast(action === 'check-in' ? `Checked in ${res.full_name}.` : `Checked out. Room ${res.room_number} is now dirty.`);
+      if (res.warning) toast(res.warning, 'error');
+      done(res);
+    } catch (err) { toast(err.message, 'error'); }
+  }
+
+  // ---- floor map
+  async function panelFloor(day) {
+    const panel = $('#panel');
+    day = day || state.floorDay || iso(new Date());
+    state.floorDay = day;
+    panel.innerHTML = '<div class="empty">Loading floor map...</div>';
+    try {
+      const d = await staffCall(() => api(`/api/staff/floor-map?date=${encodeURIComponent(day)}`));
+      if (!d) return;
+      const L = { free: 'Free', arriving: 'Arriving', occupied: 'Occupied', departing: 'Departing', maintenance: 'Maintenance' };
+      const tile = r => `<button type="button" class="fm-tile fm-${esc(r.state)}${r.dirty ? ' fm-dirty' : ''}${r.turnover ? ' fm-turn' : ''}" data-room="${esc(r.room_id)}"
+        title="${esc(r.room_number)} ${esc(r.type_name)}: ${esc(L[r.state])}${r.stay ? ', ' + esc(r.stay.full_name) : ''}${r.dirty ? ', dirty' : ''}"
+        aria-label="Room ${esc(r.room_number)}, ${esc(r.type_name)}, ${esc(L[r.state])}${r.dirty ? ', dirty' : ''}"><b>${esc(r.room_number)}</b><small>${esc(r.type_name.slice(0, 3))}</small></button>`;
+      panel.innerHTML = `<form class="toolbar" id="fm-form">
+          <button class="btn small secondary" type="button" data-shift="-1" aria-label="Previous day">&larr;</button>
+          <label class="field"><span>Date</span><input type="date" name="date" value="${esc(d.date)}"></label>
+          <button class="btn small secondary" type="button" data-shift="1" aria-label="Next day">&rarr;</button>
+          <button class="btn small" type="button" data-shift="0">Today</button></form>
+        <div class="fm-legend" role="list">${Object.keys(L).map(k => `<span role="listitem"><i class="fm-key fm-${k}"></i>${L[k]} <b>${d.counts[k]}</b></span>`).join('')}
+          ${d.is_today ? `<span role="listitem"><i class="fm-key fm-dirty-key"></i>Dirty <b>${d.counts.dirty}</b></span>` : ''}</div>
+        <div class="fm-building">${d.floors.map(f => `<div class="fm-floor"><div class="fm-label">Floor ${esc(f.floor)}</div><div class="fm-rooms">${f.rooms.map(tile).join('')}</div></div>`).join('')}</div>`;
+      const rooms = {};
+      d.floors.forEach(f => f.rooms.forEach(r => { rooms[r.room_id] = r; }));
+      $('#fm-form').addEventListener('change', e => panelFloor(e.target.value));
+      $('#fm-form').addEventListener('click', e => {
+        const b = e.target.closest('[data-shift]');
+        if (!b) return;
+        const n = Number(b.dataset.shift);
+        panelFloor(n === 0 ? iso(new Date()) : iso(addDays(new Date(d.date + 'T00:00:00'), n)));
+      });
+      panel.querySelector('.fm-building').addEventListener('click', e => {
+        const b = e.target.closest('[data-room]');
+        if (b) openRoomDialog(rooms[b.dataset.room], d);
+      });
+    } catch (err) { panel.innerHTML = alertHtml(err.message); }
+  }
+
+  function openRoomDialog(r, map) {
+    const stayLine = (label, s) => s ? `<dt>${label}</dt><dd>${esc(s.full_name)}, ${fmtDate(s.check_in)} to ${fmtDate(s.check_out)} (#${esc(s.reservation_id)})${s.checked_in_at ? ' <span class="chip Confirmed">in house</span>' : ''}</dd>` : '';
+    const L = { free: 'Free', arriving: 'Arriving', occupied: 'Occupied', departing: 'Departing', maintenance: 'Under maintenance' };
+    const hk = map.is_today && r.housekeeping ? `<dt>Housekeeping</dt><dd>${hkChip(r.housekeeping)}</dd>` : '';
+    const body = openDialog(`Room ${r.room_number}, ${r.type_name}`, `<div class="summary"><dl>
+        <dt>${esc(fmtDate(map.date))}</dt><dd><b>${esc(L[r.state])}</b>${r.turnover ? ' (guest leaves, another arrives)' : ''}</dd>
+        ${stayLine(r.state === 'departing' ? 'Leaving' : 'Guest', r.stay)}${stayLine('Next guest', r.next)}${hk}</dl></div>
+      <div class="actions" id="room-actions"></div>`);
+    const box = $('#room-actions', body);
+    const buttons = [];
+    if (map.is_today && r.stay && r.stay.status === 'Confirmed' && !r.stay.checked_in_at && r.stay.check_in <= map.date && r.state !== 'departing') buttons.push(['check-in', 'Check in', r.stay.reservation_id]);
+    if (map.is_today && r.stay && r.stay.checked_in_at && !r.stay.checked_out_at) buttons.push(['check-out', 'Check out', r.stay.reservation_id]);
+    if (map.is_today && HK_NEXT[r.housekeeping]) buttons.push(['hk', HK_NEXT[r.housekeeping][1], HK_NEXT[r.housekeeping][0]]);
+    if (map.is_today && r.housekeeping && r.housekeeping !== 'Dirty') buttons.push(['hk-dirty', 'Report dirty', 'Dirty']);
+    box.innerHTML = buttons.map((b, i) => `<button class="btn small${i ? ' secondary' : ''}" type="button" data-i="${i}">${esc(b[1])}</button>`).join('') + '<button class="btn small secondary" type="button" data-close>Close</button>';
+    box.addEventListener('click', async e => {
+      const b = e.target.closest('[data-i]');
+      if (!b) return;
+      const [kind, , arg] = buttons[Number(b.dataset.i)];
+      if (kind === 'check-in' || kind === 'check-out') await stayAction(box, arg, kind, null, () => { dlg.close(); panelFloor(map.date); });
+      else if (await hkSet(r.room_id, arg)) { dlg.close(); panelFloor(map.date); }
+    });
+  }
+
+  // ---- housekeeping board
+  async function panelHousekeeping() {
+    const panel = $('#panel');
+    panel.innerHTML = '<div class="empty">Loading housekeeping board...</div>';
+    try {
+      const d = await staffCall(() => api('/api/staff/housekeeping'));
+      if (!d) return;
+      const s = d.summary;
+      const row = r => {
+        const next = HK_NEXT[r.housekeeping];
+        const note = r.priority ? `<b class="hot">Guest ${esc(r.arriving_guest)} arrives today. Ready by 14:00.</b>`
+          : r.arriving_today ? `Arrival today: ${esc(r.arriving_guest)}` : r.departing_today ? 'Guest leaves today (12:00)' : '';
+        return `<tr><td><b>${esc(r.room_number)}</b></td><td class="num">${esc(r.floor)}</td><td>${esc(r.type_name)}</td><td>${hkChip(r.housekeeping)}</td><td>${note}</td>
+          <td>${next ? `<button class="btn small" type="button" data-room="${esc(r.room_id)}" data-to="${esc(next[0])}">${esc(next[1])}</button>` : ''}</td></tr>`;
+      };
+      const group = (title, list, hint) => list.length ? `<h3>${title} <span class="meta">(${list.length})</span></h3>${hint ? `<p class="meta">${hint}</p>` : ''}
+        <div class="table-wrap"><table><thead><tr><th>Room</th><th class="num">Floor</th><th>Type</th><th>Status</th><th>Note</th><th></th></tr></thead><tbody>${list.map(row).join('')}</tbody></table></div>` : '';
+      const priority = d.rooms.filter(r => r.priority);
+      const dirty = d.rooms.filter(r => !r.priority && r.housekeeping === 'Dirty');
+      const toInspect = d.rooms.filter(r => !r.priority && r.housekeeping === 'Clean');
+      const leaving = d.rooms.filter(r => r.departing_today && r.housekeeping === 'Inspected');
+      panel.innerHTML = `<p class="meta">A room becomes <b>Dirty</b> when the guest checks out (or at 12:00 on the check-out day). Then: clean, then inspect. Today is ${esc(fmtDate(d.date))}.</p>
+        <div class="kpis"><div class="kpi"><b>${s.priority}</b><span>Priority (arrival today)</span></div><div class="kpi"><b>${s.Dirty}</b><span>To clean</span></div>
+          <div class="kpi"><b>${s.Clean}</b><span>To inspect</span></div><div class="kpi"><b>${s.Inspected}</b><span>Ready</span></div>
+          <div class="kpi"><b>${s.departing_today}</b><span>Leaving today</span></div></div>
+        ${d.rooms.length ? group('Priority: guest arrives today', priority, 'Clean these first.') + group('To clean', dirty) + group('To inspect', toInspect) + group('Leaving today (will become dirty)', leaving)
+          : '<div class="okbox">Nothing to clean right now. Every room is inspected and ready.</div>'}`;
+      panel.onclick = async e => {
+        const b = e.target.closest('[data-to]');
+        if (!b) return;
+        b.disabled = true;
+        try { if (await hkSet(b.dataset.room, b.dataset.to)) panelHousekeeping(); else b.disabled = false; } catch (err) { b.disabled = false; toast(err.message, 'error'); }
+      };
+    } catch (err) { panel.innerHTML = alertHtml(err.message); }
+  }
+
+  // ---- check-in with the QR pass (scanner, camera or typed code)
+  async function panelCheckin() {
+    const panel = $('#panel');
+    panel.innerHTML = `<p class="meta">Scan the guest's QR pass with a barcode scanner (it types the code), use the camera, or type the pass code or reservation number.</p>
+      <form class="toolbar" id="pass-form" novalidate><label class="field"><span>Pass code</span><input name="code" id="pass-code" placeholder="HB123-A1B2C3" autocomplete="off" autofocus></label>
+        <button class="btn" type="submit">Find</button>
+        ${'BarcodeDetector' in window ? '<button class="btn secondary" type="button" id="scan-cam">Scan with camera</button>' : ''}</form>
+      <video id="scan-video" class="scan-video" hidden muted playsinline></video><div id="pass-result"></div>`;
+    const result = $('#pass-result');
+    let stream = null, timer = null;
+    const stopCam = () => { clearInterval(timer); if (stream) stream.getTracks().forEach(t => t.stop()); stream = null; const v = $('#scan-video'); if (v) v.hidden = true; };
+    async function find(code) {
+      code = code.trim();
+      if (!code) return;
+      result.innerHTML = '<div class="empty">Looking...</div>';
+      try {
+        const d = await staffCall(() => api(`/api/staff/passes/lookup?code=${encodeURIComponent(code)}`));
+        if (!d) return;
+        result.innerHTML = stayCardHtml(d);
+        $('#stay-card').addEventListener('click', e => {
+          const b = e.target.closest('[data-stay]');
+          if (b) stayAction(result, d.reservation_id, b.dataset.stay, /^HB/i.test(code) ? code : null, () => find(String(d.reservation_id)));
+        });
+      } catch (err) { result.innerHTML = alertHtml(err.message); }
+    }
+    $('#pass-form').addEventListener('submit', e => { e.preventDefault(); find($('#pass-code').value); });
+    const cam = $('#scan-cam');
+    if (cam) cam.addEventListener('click', async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        const v = $('#scan-video'); v.srcObject = stream; v.hidden = false; await v.play();
+        const det = new BarcodeDetector({ formats: ['qr_code'] });
+        timer = setInterval(async () => {
+          try { const found = await det.detect(v); if (found.length) { $('#pass-code').value = found[0].rawValue; stopCam(); find(found[0].rawValue); } } catch (e) { /* keep trying */ }
+        }, 400);
+      } catch (err) { toast('The camera could not be opened. Type the code instead.', 'error'); }
+    });
+    window.addEventListener('hashchange', stopCam, { once: true });
+  }
+
+  // ---- price suggestions (manager, shown on the Prices tab)
+  async function suggestionsHtml() {
+    const d = await staffCall(() => api('/api/manager/price-suggestions'));
+    if (!d) return '';
+    const card = x => `<div class="panel sugg sugg-${esc(x.action)}"><h3>${esc(x.type_name)} <span class="chip ${x.action === 'raise' ? 'Pending' : x.action === 'lower' ? 'Cancelled' : 'Completed'}">${x.action === 'keep' ? 'Keep' : (x.change_percent > 0 ? '+' : '') + x.change_percent + '%'}</span></h3>
+      <p>${esc(x.reason)}</p>
+      <p class="meta">Full next weekend: ${Math.round(x.occupancy.weekend * 100)}%, next 7 days: ${Math.round(x.occupancy.next_7_days * 100)}%, next 30 days: ${Math.round(x.occupancy.next_30_days * 100)}%, last-year average: ${Math.round(x.occupancy.last_year_average * 100)}%.</p>
+      ${x.action === 'keep' ? '' : `<button class="btn small" type="button" data-apply="${esc(x.room_type_id)}" data-name="${esc(x.type_name)}" data-old="${esc(x.current_price)}" data-new="${esc(x.suggested_price)}">Apply: ${esc(money(x.current_price))} to ${esc(money(x.suggested_price))}</button>`}</div>`;
+    return `<h2>Price suggestions</h2><p class="meta">Rule-based hints from bookings for the weekend ${esc(fmtDate(d.weekend[0]))} to ${esc(fmtDate(d.weekend[1]))}, the next 7 and 30 days. Nothing changes until you apply a suggestion.</p>
+      <div class="grid2" id="sugg-grid">${d.suggestions.map(card).join('')}</div>
+      <details class="gap"><summary>How are suggestions made?</summary><ul>${d.rules.map(r => `<li>${esc(r)}</li>`).join('')}</ul></details><h2>Change prices</h2>`;
+  }
+
   // ---- prices (manager)
   async function panelPrices() {
     const panel = $('#panel');
@@ -690,7 +923,9 @@
     try {
       const d = await staffCall(() => api('/api/manager/room-types'));
       if (!d) return;
-      panel.innerHTML = `<p class="meta">Change the price per night of a room type. The new price is used for new bookings only.
+      let sugg = '';
+      try { sugg = await suggestionsHtml(); } catch (err) { sugg = ''; }
+      panel.innerHTML = `${sugg}<p class="meta">Change the price per night of a room type. The new price is used for new bookings only.
         Confirmed, completed and cancelled reservations keep the price they were booked at, also when their dates are changed.</p>
         <div class="table-wrap"><table id="price-table"><caption class="sr">Room prices</caption>
         <thead><tr><th>Room type</th><th class="num">Rooms</th><th class="num">Sleeps</th><th class="num">Price per night</th><th>New price (KZT)</th></tr></thead><tbody>
@@ -700,6 +935,20 @@
           <td><form class="price-form" data-id="${esc(t.room_type_id)}" data-name="${esc(t.type_name)}" data-old="${esc(t.price_per_night)}" novalidate>
             <input type="number" name="price" min="1" max="10000000" step="1" value="${esc(t.price_per_night)}" aria-label="New price for ${esc(t.type_name)}" required>
             <button class="btn small" type="submit">Save</button></form></td></tr>`).join('')}</tbody></table></div>`;
+      const grid = $('#sugg-grid');
+      if (grid) grid.addEventListener('click', async e => {
+        const b = e.target.closest('[data-apply]');
+        if (!b) return;
+        const { name, old, new: nw } = b.dataset;
+        const answer = await confirmDialog({ title: `Apply the ${name} suggestion?`, message: `${name}: ${money(old)} to ${money(nw)} per night. New bookings use the new price. Existing reservations keep their price.`, confirm: 'Change price' });
+        if (!answer.ok) return;
+        try {
+          const res = await staffCall(() => api(`/api/manager/room-types/${b.dataset.apply}/price`, { method: 'POST', body: { price: Number(nw) } }));
+          if (!res) return;
+          toast(`${res.type_name} now costs ${money(res.new_price)} per night.`);
+          panelPrices();
+        } catch (err) { toast(err.message, 'error'); }
+      });
       $('#price-table').addEventListener('submit', async e => {
         e.preventDefault();
         const f = e.target, name = f.dataset.name, old = Number(f.dataset.old), price = Number(f.elements.price.value);
