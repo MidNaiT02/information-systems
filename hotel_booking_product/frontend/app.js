@@ -192,7 +192,7 @@
     box.innerHTML = '<div class="notice">Looking for free rooms...</div>';
     try {
       const d = await api(`/api/rooms/search?check_in=${encodeURIComponent(ci)}&check_out=${encodeURIComponent(co)}`);
-      state.search = { ci: d.check_in, co: d.check_out, nights: d.nights, rooms: d.rooms };
+      state.search = { ci: d.check_in, co: d.check_out, nights: d.nights, rooms: d.rooms, typeFilter: 'All' };
       showResults();
     } catch (err) {
       state.search = null;
@@ -212,18 +212,57 @@
   function showResults() {
     const s = state.search, box = $('#results');
     if (!s || !box) return;
-    if (!s.rooms.length) {
-      box.innerHTML = '<div class="notice"><b>No rooms are free for these dates.</b> Try other dates, or a shorter stay.</div><div id="flex"></div>';
+
+    // Keep the total from the complete search result, even when one type is selected.
+    const totalFree = s.rooms.length;
+    if (!s.typeFilter) s.typeFilter = 'All';
+
+    if (!totalFree) {
+      box.innerHTML = `<div class="notice"><b>0 rooms are free for these dates.</b> Try other dates, or a shorter stay.</div><div id="flex"></div>`;
       loadFlex(s.ci, s.co);
       return;
     }
-    const groups = [];                    // one card per room type, showing one free room of that type
+
+    const groups = [];                    // one card per room type, with the number of free rooms
     for (const r of s.rooms) {
       const g = groups.find(x => x.room.type_name === r.type_name);
       if (g) g.free++; else groups.push({ room: r, free: 1 });
     }
-    box.innerHTML = `<p class="meta count">${plural(s.rooms.length, 'room')} free from ${fmtDate(s.ci)} to ${fmtDate(s.co)}. Pick a room type; one free room of that type is shown.</p>
-      <ul class="plaques">${groups.map(g => plaqueHtml(g.room, s.nights, g.free)).join('')}</ul><div id="flex"></div>`;
+
+    const types = ['Standard', 'Deluxe', 'Suite', 'President'];
+    const selectedGroups = s.typeFilter === 'All'
+      ? groups
+      : groups.filter(g => g.room.type_name === s.typeFilter);
+    const selectedFree = selectedGroups.reduce((sum, g) => sum + g.free, 0);
+    const options = types.map(type => {
+      const group = groups.find(g => g.room.type_name === type);
+      const count = group ? group.free : 0;
+      return `<option value="${esc(type)}"${s.typeFilter === type ? ' selected' : ''}>${esc(type)} (${count})</option>`;
+    }).join('');
+
+    const filteredContent = selectedGroups.length
+      ? `<ul class="plaques">${selectedGroups.map(g => plaqueHtml(g.room, s.nights, g.free)).join('')}</ul>`
+      : `<div class="notice"><b>No ${esc(s.typeFilter)} rooms are free for these dates.</b> Choose another room type or change your dates.</div>`;
+
+    box.innerHTML = `
+      <div class="results-tools">
+        <div>
+          <p class="meta count">${plural(totalFree, 'room')} free in total from ${fmtDate(s.ci)} to ${fmtDate(s.co)}.</p>
+          <p class="meta filter-count" aria-live="polite">Showing ${selectedFree} of ${totalFree} free rooms${s.typeFilter === 'All' ? '' : ` — ${esc(s.typeFilter)}`}.</p>
+        </div>
+        <label class="field room-type-filter"><span>Filter by room type</span>
+          <select id="room-type-filter" aria-label="Filter rooms by type">
+            <option value="All"${s.typeFilter === 'All' ? ' selected' : ''}>All room types (${totalFree})</option>
+            ${options}
+          </select>
+        </label>
+      </div>
+      ${filteredContent}<div id="flex"></div>`;
+
+    $('#room-type-filter').addEventListener('change', e => {
+      s.typeFilter = e.target.value;
+      showResults();
+    });
     loadFlex(s.ci, s.co);
   }
 
