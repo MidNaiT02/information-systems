@@ -313,3 +313,6 @@ input[type="checkbox"] { width: auto; accent-color: var(--brass); }
 #hx-form { display: flex; gap: .5rem; padding: .6rem .8rem; border-top: 1px solid var(--line); }
 #hx-form input { flex: 1; min-width: 0; }
 @media (max-width: 560px) { #hx-fab { bottom: .8rem; right: .8rem; } #hx-panel { right: .8rem; bottom: 4rem; } }
+
+.row-card { display:flex; flex-wrap:wrap; align-items:center; gap:.75rem; justify-content:space-between; padding:1rem 0; border-bottom:1px solid var(--line, #333); }
+#scan-reader video { width:100%; max-width:420px; }

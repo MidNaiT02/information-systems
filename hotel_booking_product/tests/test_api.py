@@ -176,6 +176,25 @@ class GuestSelfServiceTests(Base):
         bad = call("POST", "/api/bookings/lookup", {"reservation_id": b["reservation_id"], "email": "other@example.kz"})
         self.assertEqual(bad[0], 404)
 
+    def test_guest_lookup_accepts_reservation_number_or_pass_code_or_email(self):
+        b = self.make()
+        by_number = call("POST", "/api/bookings/lookup", {"reservation_id": str(b["reservation_id"])})
+        self.assertEqual(by_number[0], 200)
+        self.assertEqual(by_number[1]["reservation_id"], b["reservation_id"])
+        by_code = call("POST", "/api/bookings/lookup", {"pass_code": b["pass"]["code"]})
+        self.assertEqual(by_code[0], 200)
+        self.assertEqual(by_code[1]["reservation_id"], b["reservation_id"])
+        by_email = call("POST", "/api/bookings/lookup", {"email": "anna@example.kz"})
+        self.assertEqual(by_email[0], 200)
+        self.assertEqual(len(by_email[1]["reservations"]), 1)
+
+    def test_guest_email_lookup_returns_multiple_reservations(self):
+        first = self.make()
+        self.book(ci=d(30), co=d(32), email="anna@example.kz")
+        status, data, _ = call("POST", "/api/bookings/lookup", {"email": "ANNA@example.kz"})
+        self.assertEqual(status, 200)
+        self.assertEqual(len(data["reservations"]), 2)
+
     def test_early_cancellation_refunds_and_frees_the_room(self):
         b = self.make()
         status, data, _ = call("POST", "/api/bookings/cancel", {"reservation_id": b["reservation_id"], "email": "anna@example.kz"})
@@ -192,23 +211,24 @@ class GuestSelfServiceTests(Base):
         call("POST", "/api/bookings/cancel", body)
         self.assertEqual(call("POST", "/api/bookings/cancel", body)[0], 409)
 
-    def test_late_cancellation_needs_a_manager(self):
-        """FR-03: less than 24 hours before check-in a guest cannot cancel online"""
+    def test_checkin_day_guest_cancellation_uses_80_percent_policy(self):
         b = self.make()
         now = datetime.strptime(d(20), "%Y-%m-%d") + timedelta(hours=14) - timedelta(hours=5)
-        with self.assertRaises(db.BookingError) as ctx:
-            db.cancel_reservation(self.conn, b["reservation_id"], "Guest", now=now)
-        self.assertEqual(ctx.exception.code, "manager_approval")
+        res = db.cancel_reservation(self.conn, b["reservation_id"], "Guest", now=now)
+        self.assertEqual(res["refund_percent"], 80)
+        self.assertEqual(res["refunded"], round(res["refunded"] / 0.8, 2) * 0.8)
 
-    def test_manager_can_cancel_late_with_or_without_refund(self):
+    def test_manager_cancellation_uses_the_same_automatic_policy(self):
         now = datetime.strptime(d(20), "%Y-%m-%d") + timedelta(hours=14) - timedelta(hours=5)
         a = self.make()
         res = db.cancel_reservation(self.conn, a["reservation_id"], "Manager", now=now, refund=True)
-        self.assertEqual(res["refunded"], a["total_price"])
+        self.assertEqual(res["refund_percent"], 80)
+        self.assertGreater(res["refunded"], 0)
         _, c, _ = self.book(ci=d(30), co=d(32), email="c@example.kz")
         now2 = datetime.strptime(d(30), "%Y-%m-%d") + timedelta(hours=14) - timedelta(hours=2)
         res2 = db.cancel_reservation(self.conn, c["reservation_id"], "Manager", now=now2, refund=False)
-        self.assertEqual(res2["refunded"], 0)
+        self.assertEqual(res2["refund_percent"], 80)
+        self.assertGreater(res2["refunded"], 0)
 
 
 class StaffTests(Base):

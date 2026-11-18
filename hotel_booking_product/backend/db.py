@@ -70,6 +70,8 @@ def init_db(path=None, reset=False, demo_data=True, today=None, records=None):
             conn.executescript(f.read())
         import features
         features.ensure_columns(conn)
+        import enhancements
+        enhancements.init(conn)
         for name, role, email, password in STAFF_SEED:
             salt, digest = security.hash_password(password)
             conn.execute("INSERT INTO staff(full_name, role, email, salt, password_hash) VALUES (?,?,?,?,?)",
@@ -94,6 +96,8 @@ def migrate(path):
                              total_price / MAX(1, CAST(julianday(check_out) - julianday(check_in) AS INTEGER))""")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_res_checkin ON reservations(check_in)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_pay_date ON payments(payment_date)")
+        import enhancements
+        enhancements.init(conn)
         import features
         if features.ensure_columns(conn):          # housekeeping and check-in columns were just added
             features.seed_housekeeping(conn)
@@ -303,12 +307,16 @@ def search_free_rooms(conn, check_in, check_out):
     """Available rooms with no Confirmed reservation overlapping the dates."""
     ci, co, nights = parse_dates(check_in, check_out)
     rows = conn.execute(
-        """SELECT ro.room_id, ro.room_number, ro.floor, rt.type_name, rt.capacity, rt.price_per_night
+        """SELECT ro.room_id, ro.room_number, ro.floor, rt.type_name, rt.capacity, rt.price_per_night,
+                  (SELECT ROUND(AVG(v.rating),2) FROM reviews v JOIN reservations rv USING(reservation_id) WHERE rv.room_id=ro.room_id) AS average_rating,
+                  (SELECT COUNT(*) FROM reviews v JOIN reservations rv USING(reservation_id) WHERE rv.room_id=ro.room_id) AS review_count
            FROM rooms ro JOIN room_types rt ON ro.room_type_id = rt.room_type_id
            WHERE ro.status = 'Available' AND ro.room_id NOT IN (
                SELECT room_id FROM reservations
                WHERE status = 'Confirmed' AND ? < check_out AND ? > check_in)
-           ORDER BY rt.price_per_night, ro.room_number""", (ci, co)).fetchall()
+             AND NOT EXISTS (SELECT 1 FROM maintenance_tickets t WHERE t.room_id=ro.room_id
+               AND t.status IN ('Open','In Progress') AND t.start_date < ? AND t.expected_end_date >= ?)
+           ORDER BY rt.price_per_night, ro.room_number""", (ci, co, co, ci)).fetchall()
     return [dict(r, total_price=r["price_per_night"] * nights) for r in rows], nights
 
 
@@ -356,12 +364,12 @@ def _confirmation_text(res_id, guest_name, room, ci, co, nights, total):
             f"Reservation number: {res_id}\nRoom: {room['room_number']} ({room['type_name']})\n"
             f"Check-in: {ci} from {CHECK_IN_HOUR}:00\nCheck-out: {co}\nNights: {nights}\n"
             f"Total paid: {total:,.0f} KZT\n\n"
-            f"Free cancellation up to {FREE_CANCEL_HOURS} hours before check-in.\n"
+            "Cancellation refunds are calculated automatically from the days remaining before check-in.\n"
             "To manage your booking, use your reservation number and this email address.\n")
 
 
 def book_room(conn, room_id, check_in, check_out, method, full_name="", phone="", email="",
-              guest_id=None, simulate_payment_failure=False):
+              guest_id=None, simulate_payment_failure=False, add_ons=None):
     """Save the guest (if new), the reservation, the payment and the confirmation email as ONE transaction.
 
     If any step fails everything is rolled back, so no half-finished booking remains.
@@ -396,11 +404,28 @@ def book_room(conn, room_id, check_in, check_out, method, full_name="", phone=""
             else:
                 guest_id = conn.execute("INSERT INTO guests(full_name, phone, email) VALUES (?,?,?)",
                                         (full_name, phone, email)).lastrowid
-        total = nights * room["price_per_night"]
+        import enhancements
+        loyalty = enhancements.loyalty(conn, guest_id)
+        base_total = nights * room["price_per_night"]
+        discount = round(base_total * loyalty["discount_percent"] / 100.0, 2)
+        addons = add_ons or []
+        addon_total = 0.0
+        selected = []
+        for key in addons:
+            if key not in enhancements.ADDONS:
+                raise BookingError("Unknown booking extra.", 400, "bad_addon")
+            label, unit = enhancements.ADDONS[key]
+            addon_total += unit
+            selected.append((key, unit, label))
+        total = base_total - discount + addon_total
         res_id = conn.execute(
-            """INSERT INTO reservations(guest_id, room_id, check_in, check_out, status, total_price, nightly_rate)
-               VALUES (?,?,?,?, 'Confirmed', ?, ?)""",
-            (guest_id, room_id, ci, co, total, room["price_per_night"])).lastrowid
+            """INSERT INTO reservations(guest_id, room_id, check_in, check_out, status, total_price, nightly_rate,
+               loyalty_tier, loyalty_discount, base_total)
+               VALUES (?,?,?,?, 'Confirmed', ?, ?, ?, ?, ?)""",
+            (guest_id, room_id, ci, co, total, room["price_per_night"], loyalty["tier"], discount, base_total)).lastrowid
+        for key, unit, label in selected:
+            conn.execute("INSERT INTO reservation_addons(reservation_id,addon_key,unit_price) VALUES(?,?,?)", (res_id,key,unit))
+            conn.execute("INSERT INTO revenue_lines(reservation_id,category,amount) VALUES(?,?,?)", (res_id,label,unit))
         if simulate_payment_failure:
             raise BookingError("Payment failed. The reservation was not saved.", 402, "payment_failed")
         conn.execute(
@@ -420,7 +445,9 @@ def book_room(conn, room_id, check_in, check_out, method, full_name="", phone=""
         raise friendly(e)
     return {"reservation_id": res_id, "room_id": room_id, "room_number": room["room_number"],
             "type_name": room["type_name"], "check_in": ci, "check_out": co, "nights": nights,
-            "total_price": total, "email_id": email_id, "to_email": to_email}
+            "total_price": total, "base_total": base_total, "loyalty_tier": loyalty["tier"],
+            "loyalty_discount_percent": loyalty["discount_percent"], "loyalty_discount_amount": discount,
+            "addons_total": addon_total, "email_id": email_id, "to_email": to_email}
 
 
 # ---------------------------------------------------------------- confirmation emails (FR-02)
@@ -498,6 +525,11 @@ def _decorate(row, now=None):
     hours = hours_until_checkin(d["check_in"], now)
     d["hours_until_checkin"] = round(hours, 1)
     d["free_cancellation"] = d["status"] == "Confirmed" and hours >= FREE_CANCEL_HOURS
+    try:
+        import enhancements
+        d.update(enhancements.refund_percent(d["check_in"], now))
+    except Exception:
+        pass
     d["nights"] = (datetime.strptime(d["check_out"], "%Y-%m-%d") - datetime.strptime(d["check_in"], "%Y-%m-%d")).days
     return d
 
@@ -621,11 +653,7 @@ def _last_method(conn, reservation_id):
 
 
 def cancel_reservation(conn, reservation_id, actor_role, now=None, refund=None):
-    """Cancel a Confirmed reservation.
-
-    More than 24 hours before check-in anyone may cancel and the guest is refunded in full.
-    Later than that only a Manager may cancel, and the refund is the manager's decision.
-    """
+    """Cancel a Confirmed reservation using the automatic date-based refund policy."""
     now = now or datetime.now()
     conn.execute("BEGIN IMMEDIATE")
     try:
@@ -634,19 +662,19 @@ def cancel_reservation(conn, reservation_id, actor_role, now=None, refund=None):
             raise BookingError("Reservation not found.", 404, "not_found")
         if r["status"] != "Confirmed":
             raise BookingError("Only a Confirmed reservation can be cancelled.", 409, "not_confirmed")
-        late = hours_until_checkin(r["check_in"], now) < FREE_CANCEL_HOURS
-        if late and actor_role != "Manager":
-            raise BookingError("Less than 24 hours before check-in: manager approval needed.", 403, "manager_approval")
-        refund_it = (not late) or bool(refund)
+        import enhancements
+        policy = enhancements.refund_preview(conn, reservation_id, now)
+        # The published date-based policy applies consistently to guests and staff.
+        refund_rate = policy["refund_percent"]
         conn.execute("UPDATE reservations SET status = 'Cancelled' WHERE reservation_id = ?", (reservation_id,))
         refunded = 0.0
         paid = _net_paid(conn, reservation_id)
-        if refund_it and paid > 0:
+        refunded = round(paid * refund_rate / 100.0, 2)
+        if refunded > 0:
             conn.execute("INSERT INTO payments(reservation_id, amount, payment_method, payment_date, status) "
-                         "VALUES (?,?,?, date('now'), 'Refunded')", (reservation_id, paid, _last_method(conn, reservation_id)))
-            refunded = paid
+                         "VALUES (?,?,?, date('now'), 'Refunded')", (reservation_id, refunded, _last_method(conn, reservation_id)))
         conn.execute("COMMIT")
-        return {"reservation_id": reservation_id, "status": "Cancelled", "refunded": refunded, "late": late}
+        return {"reservation_id": reservation_id, "status": "Cancelled", "refunded": refunded, "refund_percent": refund_rate, "days_left": policy["days_left"], "late": policy["days_left"] <= 0}
     except BookingError:
         conn.execute("ROLLBACK")
         raise
@@ -803,6 +831,11 @@ def dashboard(conn, now=None, date_from=None, date_to=None):
         "double_bookings_blocked": blocked,
         "status_counts": counts,
         "revenue_by_type": by_type,
+        "addon_revenue_by_type": [dict(r) for r in conn.execute(
+            "SELECT category, COALESCE(SUM(amount),0) AS revenue FROM revenue_lines " +
+            ("WHERE substr(created_at,1,10) BETWEEN ? AND " if filtered else "") +
+            ("? GROUP BY category ORDER BY revenue DESC" if filtered else "GROUP BY category ORDER BY revenue DESC"),
+            ([s_iso,e_iso] if filtered else [])).fetchall()],
         "most_booked_types": most_booked,
         "daily_revenue": daily,
         "arrivals_next_7_days": arrivals,

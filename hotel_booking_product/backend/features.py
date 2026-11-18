@@ -238,7 +238,8 @@ def floor_map(conn, day, now):
         current = next((s for s in mine if s["check_in"] <= d < s["check_out"]), None)
         leaving = next((s for s in mine if s["check_out"] == d), None)
         upcoming = next((s for s in mine if s["check_in"] > d), None)
-        if ro["status"] == "Maintenance":
+        ticket = conn.execute("SELECT ticket_id,reason,expected_end_date FROM maintenance_tickets WHERE room_id=? AND status IN ('Open','In Progress') AND start_date<=? AND expected_end_date>=? ORDER BY start_date LIMIT 1", (ro["room_id"], d, d)).fetchone()
+        if ro["status"] == "Maintenance" or ticket:
             state = "maintenance"
         elif current:
             state = "arriving" if current["check_in"] == d and not current["checked_in_at"] else "occupied"
@@ -252,7 +253,8 @@ def floor_map(conn, day, now):
         floors.setdefault(ro["floor"], []).append({
             "room_id": ro["room_id"], "room_number": ro["room_number"], "type_name": ro["type_name"], "state": state,
             "housekeeping": ro["housekeeping"] if d == today else None, "dirty": dirty,
-            "turnover": bool(current and leaving), "stay": current or leaving, "next": upcoming})
+            "turnover": bool(current and leaving), "stay": current or leaving, "next": upcoming,
+            "maintenance_ticket": dict(ticket) if ticket else None})
     return {"date": d, "is_today": d == today, "counts": counts,
             "floors": [{"floor": f, "rooms": r} for f, r in sorted(floors.items(), reverse=True)]}
 

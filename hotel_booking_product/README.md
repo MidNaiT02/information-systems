@@ -113,7 +113,7 @@ Leaving on the day another guest arrives is allowed.
 - Passwords: at least 10 characters with letters and a digit. After a change every other login of that account is ended. Guessing the current password is limited like logging in.
 - CSV export is for managers only, written to the activity log, and cells that start with = + - or @ get an apostrophe so Excel cannot run them as formulas.
 - All SQL uses `?` placeholders (no SQL injection). All text shown in the browser is escaped (no script injection).
-- Content-Security-Policy, nosniff and frame protection headers. Guests see a booking only with number and email.
+- Content-Security-Policy, nosniff and frame protection headers. Guest lookup accepts a QR pass code, reservation number, or email independently as requested; cancellation additionally requires the booking email. Because reservation numbers and email addresses are not authentication secrets, use this OR lookup for a demo/prototype; production should add a one-time email verification link or OTP.
 - Card numbers are never asked for or stored. Payment is simulated.
 
 ## Files
@@ -196,9 +196,33 @@ A restore keeps the old database next to it as `.before_restore_<time>`. See DEP
 
 - It runs on one computer. For real use follow DEPLOYMENT.md (HTTPS reverse proxy, start at boot, nightly backups). The guide was written but has not been tried on a real server yet.
 - The booking page is for demo payments only. A real payment provider is not connected.
-- The ID scanner and keycard encoder from the hardware plan are not connected. The QR pass works with a barcode scanner that types the code; camera scanning needs a browser with `BarcodeDetector` (Chrome, Edge) and localhost or HTTPS.
+- The ID scanner and keycard encoder from the hardware plan are not connected. The front-desk camera QR scanner uses `html5-qrcode` from cdnjs, so the browser needs internet access to load the library, camera permission, and localhost or HTTPS.
 - Room prices are the same on every date, so the Flexible dates table shows differences only when a room type is sold out on some of the dates. Weekend or season prices would make it more useful.
 - The guide is rule based (keywords and typo tolerance), not a language model. It knows the topics listed in `frontend/assistant.js`.
 - Backups are not encrypted by this program.
 - Search speed was measured on the database only, without a network.
 - The login pause after wrong passwords is kept in memory and resets when the server restarts.
+
+## Added hotel features
+
+- **Loyalty:** completed stays determine the tier: Silver (2–4 stays, 5%), Gold (5–9, 8%), Platinum (10+, 12%). The tier and discount amount are stored on each new reservation so later tier changes do not alter old bookings. Staff can view guest counts by tier.
+- **Booking extras:** breakfast (6,000 KZT), airport transfer (12,000 KZT), and late check-out (5,000 KZT) can be selected at booking. Each is recorded as a separate revenue category and shown in the manager dashboard.
+- **Languages:** EN/RU/KZ selector with a shared frontend dictionary. The dictionary is intentionally extensible; not every long-form screen paragraph has a translated entry yet.
+- **QR webcam scanner:** the check-in page uses `html5-qrcode` and does not depend on the browser `BarcodeDetector` API. Camera access requires an internet connection for the CDN library, HTTPS or localhost, and browser permission.
+- **My Booking lookup:** guests can search with any one credential: QR pass code OR reservation number OR email. Searching by email returns all reservations for that email. Cancellation still asks for the booking email as an extra confirmation.
+- **Maintenance tickets:** staff can create tickets with a reason, start date, expected end date and status. Open/In Progress tickets block overlapping room searches and show a wrench marker on the floor map. Resolving/cancelling a ticket releases the date block.
+- **Guest reviews:** after a completed check-out, guests can submit a 1–5 rating and comment from My booking using the reservation pass code. Room search cards show room average ratings; staff can review comments and see 1–2 star reviews flagged.
+
+### Cancellation refund policy
+
+The refund is calculated automatically from calendar days remaining until check-in:
+
+| Days before check-in | Refund |
+|---|---:|
+| 4 days or more (including 7–4 days) | 100% |
+| 2–3 days | 95% |
+| 1 day | 90% |
+| Check-in day | 80% |
+| After check-in day | 0% |
+
+The 2–3 day percentage is an implementation default of 95%. The check-in-day refund is 80%; cancellations after check-in receive 0%. These rules are implemented in `backend/enhancements.py` (`refund_percent`).

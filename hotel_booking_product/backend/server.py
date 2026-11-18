@@ -3,6 +3,7 @@ import json
 import mimetypes
 import os
 import re
+import sqlite3
 import sys
 import time
 import traceback
@@ -28,7 +29,7 @@ SECURITY_HEADERS = [
     ("Referrer-Policy", "no-referrer"),
     ("X-Frame-Options", "DENY"),
     ("Content-Security-Policy",
-     "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; "
+     "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self' https://cdnjs.cloudflare.com; "
      "base-uri 'none'; form-action 'self'; frame-ancestors 'none'"),
 ]
 
@@ -73,7 +74,7 @@ def api_book(c):
     try:
         res = db.book_room(c.conn, b.get("room_id"), ci, co, str(b.get("method", "")),
                            b.get("full_name", ""), b.get("phone", ""), b.get("email", ""),
-                           simulate_payment_failure=bool(b.get("simulate_payment_failure")))
+                           simulate_payment_failure=bool(b.get("simulate_payment_failure")), add_ons=b.get("add_ons", []))
     except db.BookingError as e:
         if e.code == "room_unavailable":
             db.audit(c.conn, "guest", "double_booking_blocked", f"room {b.get('room_id')} {ci} to {co}")
@@ -92,9 +93,47 @@ def api_book(c):
 
 
 def api_lookup(c):
-    d = db.find_guest_reservation(c.conn, c.body.get("reservation_id"), c.body.get("email", ""), c.now)
-    d["pass"] = features.pass_for(c.conn, d["reservation_id"]) if d["status"] == "Confirmed" else None
-    return 200, d
+    """Guest lookup accepts any one credential: QR pass code, reservation number, OR email."""
+    code = str(c.body.get("pass_code") or c.body.get("code") or "").strip()
+    rid = str(c.body.get("reservation_id") or "").strip()
+    email = str(c.body.get("email") or "").strip()
+    if not any((code, rid, email)):
+        raise db.BookingError("Enter a QR pass code, reservation number, or email.", 400, "missing_lookup")
+
+    if code:
+        reservation_id = features.resolve_pass(c.conn, code)
+        d = db.reservation_detail(c.conn, reservation_id, c.now)
+        d.pop("phone", None)
+        rows = [d]
+    elif rid:
+        try:
+            reservation_id = int(rid)
+        except ValueError:
+            raise db.BookingError("Reservation number must contain digits only.", 400, "bad_reservation_number")
+        d = db.reservation_detail(c.conn, reservation_id, c.now)
+        if d is None:
+            raise db.BookingError("No reservation found for this number.", 404, "not_found")
+        d.pop("phone", None)
+        rows = [d]
+    else:
+        found = c.conn.execute("SELECT reservation_id FROM reservations r JOIN guests g USING(guest_id) WHERE lower(g.email)=lower(?) ORDER BY r.created_at DESC", (email,)).fetchall()
+        rows = []
+        for item in found:
+            d = db.reservation_detail(c.conn, item["reservation_id"], c.now)
+            if d:
+                d.pop("phone", None)
+                rows.append(d)
+        if not rows:
+            raise db.BookingError("No reservations found for this email.", 404, "not_found")
+
+    for d in rows:
+        d["pass"] = features.pass_for(c.conn, d["reservation_id"]) if d["status"] in ("Confirmed", "Completed") else None
+    if email and (code or rid):
+        # Additional email is an optional filter when supplied with another identifier.
+        rows = [d for d in rows if d.get("email", "").lower() == email.lower()]
+        if not rows:
+            raise db.BookingError("No reservation matches the supplied details.", 404, "not_found")
+    return 200, rows[0] if code or rid else {"reservations": rows}
 
 
 def api_price_calendar(c):
@@ -306,8 +345,52 @@ def api_manager_audit(c):
     return 200, {"audit": db.list_audit(c.conn)}
 
 
+def api_staff_loyalty(c):
+    return 200, enhancements.loyalty_counts(c.conn)
+
+
+def api_staff_maintenance(c):
+    if c.method == "GET": return 200, {"tickets": enhancements.list_tickets(c.conn)}
+    b=c.body
+    try: tid=enhancements.create_ticket(c.conn, b.get("room_id"), str(b.get("reason","")), b.get("start_date",""), b.get("expected_end_date",""))
+    except (ValueError, TypeError) as e: raise db.BookingError(str(e),400,"bad_ticket")
+    db.audit(c.conn,c.user["email"],"maintenance_ticket",f"ticket {tid}")
+    return 201,{"ticket_id":tid}
+
+
+def api_staff_ticket_update(c):
+    status=str(c.body.get("status",""))
+    if status not in ("Open","In Progress","Resolved","Cancelled"):
+        raise db.BookingError("Invalid maintenance status.",400,"bad_status")
+    cur=c.conn.execute("UPDATE maintenance_tickets SET status=? WHERE ticket_id=?",(status,int(c.params[0])))
+    if not cur.rowcount: raise db.BookingError("Ticket not found.",404,"not_found")
+    return 200,{"ok":True,"status":status}
+
+
+def api_guest_review(c):
+    b=c.body
+    try: return 201, enhancements.submit_review(c.conn,int(b.get("reservation_id")),b.get("pass_code",""),int(b.get("rating")),b.get("comment",""))
+    except (ValueError,TypeError,sqlite3.IntegrityError) as e: raise db.BookingError(str(e),400,"review_failed")
+
+
+def api_staff_reviews(c):
+    rows=[dict(r) for r in c.conn.execute("SELECT v.*,r.reservation_id,ro.room_number,g.full_name FROM reviews v JOIN reservations r USING(reservation_id) JOIN rooms ro USING(room_id) JOIN guests g USING(guest_id) ORDER BY v.rating ASC,v.created_at DESC")]
+    return 200,{"reviews":rows,"low_rating_count":sum(x["rating"]<=2 for x in rows)}
+
+
+def api_staff_ratings(c):
+    return 200,{"ratings":enhancements.room_ratings(c.conn)}
+
+
 ROUTES = [  # method, regex, handler, access ("public", "staff", "manager")
     ("GET", r"/api/health", api_health, "public"),
+    ("GET", r"/api/staff/loyalty", api_staff_loyalty, "staff"),
+    ("GET", r"/api/staff/maintenance", api_staff_maintenance, "staff"),
+    ("POST", r"/api/staff/maintenance", api_staff_maintenance, "staff"),
+    ("POST", r"/api/staff/maintenance/(\d+)", api_staff_ticket_update, "staff"),
+    ("GET", r"/api/staff/reviews", api_staff_reviews, "staff"),
+    ("GET", r"/api/staff/room-ratings", api_staff_ratings, "staff"),
+    ("POST", r"/api/reviews", api_guest_review, "public"),
     ("GET", r"/api/rooms/search", api_search, "public"),
     ("POST", r"/api/bookings", api_book, "public"),
     ("POST", r"/api/bookings/lookup", api_lookup, "public"),

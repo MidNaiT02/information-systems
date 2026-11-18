@@ -351,3 +351,47 @@ class PriceSuggestionTests(FeatureBase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class HotelEnhancementTests(unittest.TestCase):
+    def setUp(self):
+        import os, tempfile
+        self.tmp = tempfile.TemporaryDirectory()
+        self.path = os.path.join(self.tmp.name, 'hotel.db')
+        db.init_db(self.path, demo_data=False)
+        self.conn = db.connect(self.path)
+
+    def tearDown(self):
+        self.conn.close()
+        self.tmp.cleanup()
+
+    def test_refund_percent_by_days_left(self):
+        import enhancements
+        from datetime import datetime, timedelta
+        base = datetime(2026, 11, 18, 10)
+        self.assertEqual(enhancements.refund_percent((base.date()+timedelta(days=7)).isoformat(), base)['refund_percent'], 100)
+        self.assertEqual(enhancements.refund_percent((base.date()+timedelta(days=3)).isoformat(), base)['refund_percent'], 95)
+        self.assertEqual(enhancements.refund_percent((base.date()+timedelta(days=1)).isoformat(), base)['refund_percent'], 90)
+        self.assertEqual(enhancements.refund_percent(base.date().isoformat(), base)['refund_percent'], 80)
+        self.assertEqual(enhancements.refund_percent((base.date()-timedelta(days=1)).isoformat(), base)['refund_percent'], 0)
+
+    def test_booking_addons_are_saved_as_separate_revenue(self):
+        b = db.book_room(self.conn, 1, '2026-12-10', '2026-12-12', 'Card', 'Guest', '+77010000000', 'guest@example.kz', add_ons=['breakfast'])
+        self.assertEqual(b['addons_total'], 6000)
+        line = self.conn.execute('SELECT category,amount FROM revenue_lines WHERE reservation_id=?',(b['reservation_id'],)).fetchone()
+        self.assertEqual((line['category'],line['amount']),('Breakfast',6000))
+
+    def test_maintenance_ticket_blocks_dates_and_can_be_resolved(self):
+        import enhancements
+        tid=enhancements.create_ticket(self.conn,1,'Repair','2026-12-01','2026-12-03')
+        rooms,_=db.search_free_rooms(self.conn,'2026-12-02','2026-12-03')
+        self.assertNotIn(1,[r['room_id'] for r in rooms])
+        self.conn.execute("UPDATE maintenance_tickets SET status='Resolved' WHERE ticket_id=?",(tid,))
+        rooms,_=db.search_free_rooms(self.conn,'2026-12-02','2026-12-03')
+        self.assertIn(1,[r['room_id'] for r in rooms])
+
+    def test_loyalty_tiers_count_completed_stays(self):
+        import enhancements
+        guest=self.conn.execute("INSERT INTO guests(full_name,phone,email) VALUES('Repeat Guest','+77010000001','repeat@example.kz')").lastrowid
+        for i in range(2):
+            self.conn.execute("INSERT INTO reservations(guest_id,room_id,check_in,check_out,status,total_price,nightly_rate) VALUES(?, ?, ?, ?, 'Completed',100,100)",(guest,i+1,f'2026-01-0{i+1}',f'2026-01-0{i+2}'))
+        self.assertEqual(enhancements.loyalty(self.conn,guest)['tier'],'Silver')

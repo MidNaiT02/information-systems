@@ -83,8 +83,9 @@
   function renderNav() {
     const active = route()[0];
     const link = (href, label, key) => `<a href="${href}"${active === key ? ' aria-current="page"' : ''}>${label}</a>`;
-    nav.innerHTML = link('#/', 'Rooms', '') + link('#/manage', 'My booking', 'manage') + link('#/staff', 'Staff', 'staff') +
+    nav.innerHTML = `<label class="lang-switch"><span class="sr-only">Language</span><select id="ui-language" aria-label="Language"><option value="en">EN</option><option value="ru">RU</option><option value="kz">KZ</option></select></label>` + link('#/', 'Rooms', '') + link('#/manage', 'My booking', 'manage') + link('#/staff', 'Staff', 'staff') +
       (state.user ? `<span class="who">${esc(state.user.name)}, ${esc(roleLabel(state.user.role))}</span><button type="button" id="account">Account</button><button type="button" id="logout">Log out</button>` : '');
+    const lang=$('#ui-language'); if(lang){lang.value=localStorage.getItem('hotel-lang')||'en';lang.addEventListener('change',()=>{localStorage.setItem('hotel-lang',lang.value);document.documentElement.lang=lang.value;if(window.hotelApplyTranslations)window.hotelApplyTranslations();toast(lang.value==='ru'?'Язык интерфейса изменён':lang.value==='kz'?'Интерфейс тілі өзгертілді':'Interface language changed');});}
   }
   nav.addEventListener('click', async e => {
     if (e.target.id === 'account') { openPasswordDialog(); return; }
@@ -203,7 +204,7 @@
   function plaqueHtml(r, nights, free) {
     return `<li class="plaque">
       <div class="door"><b>${esc(r.room_number)}</b><span>Floor ${esc(r.floor)}</span></div>
-      <div class="info"><h3>${esc(r.type_name)}</h3><div class="meta">Sleeps ${esc(r.capacity)}, ${plural(free, 'room')} free</div>
+      <div class="info"><h3>${esc(r.type_name)}</h3><div class="meta">Sleeps ${esc(r.capacity)}, ${plural(free, 'room')} free${r.average_rating ? ` · ★ ${r.average_rating} (${r.review_count} reviews)` : ''}</div>
         <div class="price"><div><strong>${money(r.total_price)}</strong><br>
           <small>${plural(nights, 'night')}, ${money(r.price_per_night)} per night</small></div>
           <button class="btn" type="button" data-book="${esc(r.room_id)}">Book this room</button></div></div></li>`;
@@ -290,6 +291,12 @@
           <label class="field"><span>Email</span><input name="email" type="email" autocomplete="email" required maxlength="100"></label>
         </div>
         <label class="field"><span>Payment method</span><select name="method"><option>Card</option><option>Cash</option><option>Transfer</option></select></label>
+        <fieldset class="field"><legend>Optional extras</legend>
+          <label><input type="checkbox" name="addon" value="breakfast"> Breakfast — 6,000 KZT</label>
+          <label><input type="checkbox" name="addon" value="airport_transfer"> Airport transfer — 12,000 KZT</label>
+          <label><input type="checkbox" name="addon" value="late_checkout"> Late check-out — 5,000 KZT</label>
+        </fieldset>
+        <p class="meta">Repeat guests automatically receive their loyalty discount at booking. The tier and discount are saved with the reservation.</p>
         <p class="meta">Payment is simulated in this prototype. No card number is asked for or stored.</p>
         <details class="demo"><summary>Demo tools</summary>
           <label><input type="checkbox" name="simulate"> Simulate a payment failure (nothing is saved)</label></details>
@@ -314,7 +321,8 @@
       const d = await api('/api/bookings', { method: 'POST', body: {
         room_id: room.room_id, check_in: state.search.ci, check_out: state.search.co,
         full_name: f.elements.full_name.value, phone: f.elements.phone.value, email: f.elements.email.value,
-        method: f.elements.method.value, simulate_payment_failure: f.elements.simulate.checked } });
+        method: f.elements.method.value, simulate_payment_failure: f.elements.simulate.checked,
+        add_ons: [...f.querySelectorAll('input[name="addon"]:checked')].map(x => x.value) } });
       state.search.rooms = state.search.rooms.filter(r => r.room_id !== room.room_id);
       state.refreshAfterClose = true;
       showConfirmation(d);
@@ -341,7 +349,7 @@
         <dt>Paid</dt><dd>${money(d.total_price)}</dd></dl></div>
       ${passHtml(d.pass)}
       <p>${esc(mailText)}</p>
-      <p class="meta">Free cancellation until 24 hours before check-in (14:00).</p>
+      <p class="meta">Cancellation refunds are calculated automatically from the days remaining before check-in.</p>
       <div class="actions"><a class="btn" href="#/manage">Manage this booking</a>
         <button class="btn secondary" type="button" data-close>Close</button></div>`);
   }
@@ -350,53 +358,73 @@
   function viewManage() {
     app.innerHTML = `
       <section class="hero">
-        <h1>Manage your booking</h1>
-        <p>Enter the reservation number from your confirmation and the email you booked with.</p>
+        <h1>My booking</h1>
+        <p>Find your reservation using <b>any one</b> of these: QR pass code, reservation number, or booking email.</p>
         <form class="searchbar" id="find-form" novalidate>
-          <label class="field"><span>Reservation number</span><input name="rid" inputmode="numeric" required autocomplete="off"></label>
-          <label class="field"><span>Email</span><input name="email" type="email" required autocomplete="email"></label>
+          <label class="field"><span>QR pass code</span><input name="code" autocomplete="off" placeholder="HB123-A1B2C3"></label>
+          <label class="field"><span>Reservation number</span><input name="rid" inputmode="numeric" autocomplete="off" placeholder="123"></label>
+          <label class="field"><span>Email</span><input name="email" type="email" autocomplete="email" placeholder="you@example.com"></label>
           <button class="btn" type="submit">Find booking</button>
         </form>
+        <p class="meta">You only need to fill in one field. Searching by email can show several reservations.</p>
       </section>
       <div id="booking"></div>`;
     $('#find-form').addEventListener('submit', e => {
       e.preventDefault();
-      findBooking(e.target.elements.rid.value, e.target.elements.email.value);
+      const f = e.target.elements;
+      const values = { code: f.code.value.trim(), reservation_id: f.rid.value.trim(), email: f.email.value.trim() };
+      const filled = Object.entries(values).filter(([,v]) => v);
+      if (!filled.length) { $('#booking').innerHTML = alertHtml('Enter a QR pass code, reservation number, or email.'); return; }
+      if (filled.length > 1) { $('#booking').innerHTML = alertHtml('Please fill in only one field. The search works with QR code OR reservation number OR email.'); return; }
+      findBooking(values);
     });
   }
 
-  async function findBooking(rid, email, message = '') {
+  async function findBooking(criteria, message = '') {
     const box = $('#booking');
     box.innerHTML = '<div class="notice">Looking for your booking...</div>';
     try {
-      const d = await api('/api/bookings/lookup', { method: 'POST', body: { reservation_id: rid, email } });
-      let action = '';
-      if (d.status === 'Confirmed' && d.free_cancellation) {
-        action = `<p>You can cancel free of charge until 24 hours before check-in. You will be refunded ${money(d.paid)}.</p>
-          <button class="btn danger" type="button" id="guest-cancel">Cancel booking</button>`;
-      } else if (d.status === 'Confirmed') {
-        action = '<div class="notice">Check-in is less than 24 hours away, so online cancellation is closed. Please call the front desk.</div>';
+      const d = await api('/api/bookings/lookup', { method: 'POST', body: criteria });
+      if (d.reservations) {
+        box.innerHTML = `<div class="panel stack"><h2>Reservations found: ${d.reservations.length}</h2>${d.reservations.map(x => `<div class="row-card"><b>Reservation #${esc(x.reservation_id)}</b> · ${esc(x.status)} · ${fmtDate(x.check_in)} – ${fmtDate(x.check_out)}<button class="btn secondary" type="button" data-open-reservation="${esc(x.reservation_id)}">View booking</button></div>`).join('')}</div>`;
+        box.querySelectorAll('[data-open-reservation]').forEach(b => b.addEventListener('click', () => findBooking({ reservation_id: b.dataset.openReservation })));
+        return;
       }
-      box.innerHTML = `${message ? `<div class="okbox" role="status">${esc(message)}</div>` : ''}
-        <div class="panel stack"><h2>Reservation #${esc(d.reservation_id)} <span class="chip ${esc(d.status)}">${esc(d.status)}</span></h2>
-        <div class="summary"><dl>
-          <dt>Guest</dt><dd>${esc(d.full_name)}</dd>
-          <dt>Room</dt><dd>${esc(d.room_number)}, ${esc(d.type_name)}</dd>
-          <dt>Stay</dt><dd>${fmtDate(d.check_in)} to ${fmtDate(d.check_out)} (${plural(d.nights, 'night')})</dd>
-          <dt>Price</dt><dd>${money(d.total_price)}</dd>
-          <dt>Paid</dt><dd>${money(d.paid)}</dd></dl></div>${passHtml(d.pass)}${action}</div>`;
-      const cancel = $('#guest-cancel');
-      if (cancel) cancel.addEventListener('click', async () => {
-        const r = await confirmDialog({ title: `Cancel reservation #${d.reservation_id}?`, message: `Your stay on ${fmtDate(d.check_in)} will be cancelled and ${money(d.paid)} refunded.`, confirm: 'Cancel booking', danger: true });
-        if (!r.ok) return;
-        try {
-          const res = await api('/api/bookings/cancel', { method: 'POST', body: { reservation_id: rid, email } });
-          await findBooking(rid, email, `Booking cancelled. Refund: ${money(res.refunded)}.`);
-        } catch (err) { toast(err.message, 'error'); }
-      });
+      renderGuestReservation(d, criteria, message, box);
     } catch (err) {
       box.innerHTML = alertHtml(err.message);
     }
+  }
+
+  function renderGuestReservation(d, criteria, message, box) {
+    let action = '';
+    if (d.status === 'Completed') { action = `<form id="review-form" class="stack"><h3>Review your stay</h3><label class="field">Rating<select name="rating"><option value="5">5 – Excellent</option><option value="4">4 – Good</option><option value="3">3 – Average</option><option value="2">2 – Poor</option><option value="1">1 – Very poor</option></select></label><label class="field">Comment<textarea name="comment"></textarea></label><button class="btn">Submit review</button></form>`; }
+    if (d.status === 'Confirmed') {
+      const pct = d.refund_percent == null ? 100 : d.refund_percent;
+      action = `<p>Cancellation refund: <b>${pct}%</b> (${d.days_left} day(s) before check-in). Estimated refund: ${money(Number(d.paid) * pct / 100)}.</p>
+        <label class="field"><span>Booking email (required to cancel)</span><input id="cancel-email" type="email" value="${esc(criteria.email || '')}" autocomplete="email"></label>
+        <button class="btn danger" type="button" id="guest-cancel">Cancel booking</button>`;
+    }
+    box.innerHTML = `${message ? `<div class="okbox" role="status">${esc(message)}</div>` : ''}
+      <div class="panel stack"><h2>Reservation #${esc(d.reservation_id)} <span class="chip ${esc(d.status)}">${esc(d.status)}</span></h2>
+      <div class="summary"><dl>
+        <dt>Guest</dt><dd>${esc(d.full_name)}</dd>
+        <dt>Room</dt><dd>${esc(d.room_number)}, ${esc(d.type_name)}</dd>
+        <dt>Stay</dt><dd>${fmtDate(d.check_in)} to ${fmtDate(d.check_out)} (${plural(d.nights, 'night')})</dd>
+        <dt>Price</dt><dd>${money(d.total_price)}</dd>
+        <dt>Paid</dt><dd>${money(d.paid)}</dd></dl></div>${passHtml(d.pass)}${action}</div>`;
+    const reviewForm=$('#review-form'); if(reviewForm) reviewForm.addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/reviews',{method:'POST',body:{reservation_id:d.reservation_id,pass_code:d.pass.code,rating:reviewForm.elements.rating.value,comment:reviewForm.elements.comment.value}});reviewForm.innerHTML='<p class="okbox">Thank you for your review.</p>';}catch(x){toast(x.message,'error')}});
+    const cancel = $('#guest-cancel');
+    if (cancel) cancel.addEventListener('click', async () => {
+      const email = $('#cancel-email').value.trim();
+      if (!email) { toast('Enter the booking email to confirm cancellation.', 'error'); return; }
+      const r = await confirmDialog({ title: `Cancel reservation #${d.reservation_id}?`, message: `Your stay on ${fmtDate(d.check_in)} will be cancelled. Estimated refund: ${money(Number(d.paid) * (d.refund_percent == null ? 100 : d.refund_percent) / 100)} (${d.refund_percent == null ? 100 : d.refund_percent}%).`, confirm: 'Cancel booking', danger: true });
+      if (!r.ok) return;
+      try {
+        const res = await api('/api/bookings/cancel', { method: 'POST', body: { reservation_id: d.reservation_id, email } });
+        findBooking({ reservation_id: d.reservation_id, email }, `Booking cancelled. Refund: ${money(res.refunded)}.`);
+      } catch (err) { toast(err.message, 'error'); }
+    });
   }
 
   // ---------------------------------------------------------------- staff area
@@ -404,11 +432,11 @@
     if (!state.user) return viewLogin();
     const manager = state.user.role === 'Manager';
     if ((sub === 'dashboard' || sub === 'prices') && !manager) sub = 'reservations';
-    if (!['reservations', 'calendar', 'floor', 'housekeeping', 'checkin', 'outbox', 'dashboard', 'prices'].includes(sub)) sub = 'reservations';
+    if (!['reservations', 'calendar', 'floor', 'housekeeping', 'checkin', 'outbox', 'dashboard', 'prices', 'loyalty', 'maintenance', 'reviews'].includes(sub)) sub = 'reservations';
     const tab = (key, label) => `<a href="#/staff/${key}"${sub === key ? ' aria-current="page"' : ''}>${label}</a>`;
     app.innerHTML = `<h1>Staff area</h1>
       ${state.user.default_password ? '<div class="notice" role="alert"><b>You are using the demo password.</b> Anyone who has read the README can log in as you. <button type="button" class="link" id="change-now">Change it now</button></div>' : ''}
-      <nav class="tabs" aria-label="Staff sections">${tab('reservations', 'Reservations')}${tab('calendar', 'Calendar')}${tab('floor', 'Floor map')}${tab('housekeeping', 'Housekeeping')}${tab('checkin', 'Check-in')}${tab('outbox', 'Email outbox')}${manager ? tab('dashboard', 'Dashboard') + tab('prices', 'Prices') : ''}</nav>
+      <nav class="tabs" aria-label="Staff sections">${tab('reservations', 'Reservations')}${tab('calendar', 'Calendar')}${tab('floor', 'Floor map')}${tab('housekeeping', 'Housekeeping')}${tab('checkin', 'Check-in')}${tab('loyalty', 'Loyalty')}${tab('maintenance', 'Maintenance')}${tab('reviews', 'Reviews')}${tab('outbox', 'Email outbox')}${manager ? tab('dashboard', 'Dashboard') + tab('prices', 'Prices') : ''}</nav>
       <div id="panel"></div>`;
     const changeNow = $('#change-now');
     if (changeNow) changeNow.addEventListener('click', openPasswordDialog);
@@ -418,8 +446,30 @@
     else if (sub === 'housekeeping') await panelHousekeeping();
     else if (sub === 'checkin') await panelCheckin();
     else if (sub === 'outbox') await panelOutbox();
+    else if (sub === 'loyalty') await panelLoyalty();
+    else if (sub === 'maintenance') await panelMaintenance();
+    else if (sub === 'reviews') await panelReviews();
     else if (sub === 'prices') await panelPrices();
     else await panelDashboard();
+  }
+
+  async function panelLoyalty() {
+    const p=$('#panel'); p.innerHTML='<div class="empty">Loading loyalty statistics...</div>';
+    try { const d=await staffCall(()=>api('/api/staff/loyalty')); if(!d)return;
+      p.innerHTML=`<h2>Loyalty membership</h2><p class="meta">Tier is calculated from completed stays: Silver 2–4 (5%), Gold 5–9 (8%), Platinum 10+ (12%).</p><div class="grid2">${Object.entries(d.members).map(([k,v])=>`<div class="panel"><h3>${k}</h3><strong>${v}</strong><p class="meta">Guests</p></div>`).join('')}</div><p>Total guest accounts: ${d.total_guests}</p>`;
+    } catch(e){p.innerHTML=alertHtml(e.message)}
+  }
+  async function panelMaintenance() {
+    const p=$('#panel');
+    try { const d=await staffCall(()=>api('/api/staff/maintenance')); if(!d)return;
+      p.innerHTML=`<h2>Maintenance tickets</h2><form id="ticket-form" class="toolbar"><label class="field">Room number<input name="room_id" type="text" required placeholder="105"></label><label class="field">Reason<input name="reason" required></label><label class="field">Start<input name="start_date" type="date" required></label><label class="field">Expected end<input name="expected_end_date" type="date" required></label><button class="btn">Create ticket</button></form><div class="table-wrap"><table><thead><tr><th>Room</th><th>Reason</th><th>Dates</th><th>Status</th><th>Update</th></tr></thead><tbody>${d.tickets.map(t=>`<tr><td>${esc(t.room_number)}</td><td>${esc(t.reason)}</td><td>${esc(t.start_date)} – ${esc(t.expected_end_date)}</td><td>${esc(t.status)}</td><td><select data-ticket="${t.ticket_id}"><option ${t.status==='Open'?'selected':''}>Open</option><option ${t.status==='In Progress'?'selected':''}>In Progress</option><option ${t.status==='Resolved'?'selected':''}>Resolved</option><option ${t.status==='Cancelled'?'selected':''}>Cancelled</option></select></td></tr>`).join('')}</tbody></table></div>`;
+      $('#ticket-form').addEventListener('submit',async e=>{e.preventDefault();const f=e.target;try{await staffCall(()=>api('/api/staff/maintenance',{method:'POST',body:Object.fromEntries(new FormData(f))}));panelMaintenance()}catch(x){toast(x.message,'error')}});
+      p.querySelectorAll('[data-ticket]').forEach(sel=>sel.addEventListener('change',async()=>{try{await staffCall(()=>api(`/api/staff/maintenance/${sel.dataset.ticket}`,{method:'POST',body:{status:sel.value}}));toast('Ticket updated.')}catch(e){toast(e.message,'error')}}));
+    } catch(e){p.innerHTML=alertHtml(e.message)}
+  }
+  async function panelReviews() {
+    const p=$('#panel');p.innerHTML='<div class="empty">Loading reviews...</div>';
+    try{const d=await staffCall(()=>api('/api/staff/reviews'));if(!d)return;p.innerHTML=`<h2>Guest reviews</h2><p class="notice">Low ratings (1–2 stars): ${d.low_rating_count}</p>${d.reviews.map(r=>`<article class="panel"><b>${esc(r.full_name)} · Room ${esc(r.room_number)}</b><p>${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)} ${r.rating<=2?'<span class="chip Cancelled">Needs attention</span>':''}</p><p>${esc(r.comment)}</p></article>`).join('')||'<p>No reviews yet.</p>'}`;}catch(e){p.innerHTML=alertHtml(e.message)}
   }
 
   function openPasswordDialog() {
@@ -539,10 +589,8 @@
         ${currentRows.map(r => {
           let actions = '';
           if (r.status === 'Confirmed') {
-            actions = (r.free_cancellation || isManager)
-              ? `<div class="rowactions"><button class="btn small secondary" data-act="modify" data-id="${r.reservation_id}">Change dates</button>
-                 <button class="btn small danger" data-act="cancel" data-id="${r.reservation_id}">Cancel</button></div>`
-              : '<button class="btn small secondary" disabled title="Less than 24 hours before check-in: manager approval needed">Manager needed</button>';
+            actions = `<div class="rowactions"><button class="btn small secondary" data-act="modify" data-id="${r.reservation_id}">Change dates</button>
+                 <button class="btn small danger" data-act="cancel" data-id="${r.reservation_id}">Cancel</button></div>`;
           }
           return `<tr><td class="num">${r.reservation_id}</td>
             <td>${esc(r.full_name)}<div class="sub">${esc(r.email)}</div></td>
@@ -573,15 +621,17 @@
   }
 
   async function cancelFlow(r) {
-    const late = !r.free_cancellation;
-    const answer = await confirmDialog(late
-      ? { title: `Late cancellation #${r.reservation_id}`, message: `Check-in is less than 24 hours away. As manager you can still cancel. Guest paid ${money(r.paid)}.`, confirm: 'Cancel reservation', danger: true, checkbox: 'Refund the guest' }
-      : { title: `Cancel reservation #${r.reservation_id}?`, message: `${r.full_name} will be refunded ${money(r.paid)}.`, confirm: 'Cancel reservation', danger: true });
+    const pct = r.refund_percent == null ? 100 : r.refund_percent;
+    const days = r.days_left == null ? Math.ceil(r.hours_until_checkin / 24) : r.days_left;
+    const estimate = Number(r.paid) * pct / 100;
+    const answer = await confirmDialog({ title: `Cancel reservation #${r.reservation_id}?`,
+      message: `${r.full_name}. ${days} day(s) until check-in. Automatic refund: ${pct}% (${money(estimate)} of ${money(r.paid)}).`,
+      confirm: 'Cancel reservation', danger: true });
     if (!answer.ok) return;
     try {
-      const res = await staffCall(() => api(`/api/staff/reservations/${r.reservation_id}/cancel`, { method: 'POST', body: { refund: answer.checked } }));
+      const res = await staffCall(() => api(`/api/staff/reservations/${r.reservation_id}/cancel`, { method: 'POST', body: {} }));
       if (!res) return;
-      toast(`Reservation #${r.reservation_id} cancelled. Refunded ${money(res.refunded)}.`);
+      toast(`Reservation #${r.reservation_id} cancelled. Refunded ${money(res.refunded)} (${res.refund_percent}%).`);
       loadReservations();
     } catch (err) { toast(err.message, 'error'); }
   }
@@ -750,6 +800,7 @@
           <div class="panel"><h3>Net revenue by room type</h3>${hBars(d.revenue_by_type, 'type_name', 'revenue', money, 'Net revenue by room type', false)}</div>
           <div class="panel"><h3>Most booked room types</h3>${hBars(d.most_booked_types, 'type_name', 'reservations', n => String(n), 'Reservations by room type', true)}</div>
         </div>
+        <div class="panel"><h3>Add-on revenue by category</h3>${d.addon_revenue_by_type && d.addon_revenue_by_type.length ? hBars(d.addon_revenue_by_type, 'category', 'revenue', money, 'Add-on revenue', true) : '<p class="meta">No add-on sales in this period.</p>'}</div>
         <div class="panel gap"><h3>Net revenue per day, ${days === 14 ? 'last 14 days' : 'last ' + plural(days, 'day')}${p.filtered ? ' of the period up to today' : ''} (day of month)</h3>${dailyBars(d.daily_revenue)}</div>
         <div class="panel gap"><h3>Arrivals in the next 7 days</h3>
           ${d.arrivals_next_7_days.length ? `<div class="table-wrap"><table><thead><tr><th class="num">No.</th><th>Guest</th><th>Room</th><th>Check-in</th><th>Check-out</th></tr></thead><tbody>
@@ -817,7 +868,7 @@
       const L = { free: 'Free', arriving: 'Arriving', occupied: 'Occupied', departing: 'Departing', maintenance: 'Maintenance' };
       const tile = r => `<button type="button" class="fm-tile fm-${esc(r.state)}${r.dirty ? ' fm-dirty' : ''}${r.turnover ? ' fm-turn' : ''}" data-room="${esc(r.room_id)}"
         title="${esc(r.room_number)} ${esc(r.type_name)}: ${esc(L[r.state])}${r.stay ? ', ' + esc(r.stay.full_name) : ''}${r.dirty ? ', dirty' : ''}"
-        aria-label="Room ${esc(r.room_number)}, ${esc(r.type_name)}, ${esc(L[r.state])}${r.dirty ? ', dirty' : ''}"><b>${esc(r.room_number)}</b><small>${esc(r.type_name.slice(0, 3))}</small></button>`;
+        aria-label="Room ${esc(r.room_number)}, ${esc(r.type_name)}, ${esc(L[r.state])}${r.dirty ? ', dirty' : ''}"><b>${esc(r.room_number)}${r.maintenance_ticket ? ' 🔧' : ''}</b><small>${esc(r.type_name.slice(0, 3))}</small></button>`;
       panel.innerHTML = `<form class="toolbar" id="fm-form">
           <button class="btn small secondary" type="button" data-shift="-1" aria-label="Previous day">&larr;</button>
           <label class="field"><span>Date</span><input type="date" name="date" value="${esc(d.date)}"></label>
@@ -902,17 +953,22 @@
     } catch (err) { panel.innerHTML = alertHtml(err.message); }
   }
 
-  // ---- check-in with the QR pass (scanner, camera or typed code)
+  // ---- check-in with QR pass (camera scanner works without BarcodeDetector)
   async function panelCheckin() {
     const panel = $('#panel');
-    panel.innerHTML = `<p class="meta">Scan the guest's QR pass with a barcode scanner (it types the code), use the camera, or type the pass code or reservation number.</p>
-      <form class="toolbar" id="pass-form" novalidate><label class="field"><span>Pass code</span><input name="code" id="pass-code" placeholder="HB123-A1B2C3" autocomplete="off" autofocus></label>
+    panel.innerHTML = `<p class="meta">Scan the guest's QR pass with a barcode scanner, use the camera, or type the pass code or reservation number.</p>
+      <form class="toolbar" id="pass-form" novalidate><label class="field"><span>Pass code / reservation number</span><input name="code" id="pass-code" placeholder="HB123-A1B2C3 or 123" autocomplete="off" autofocus></label>
         <button class="btn" type="submit">Find</button>
-        ${'BarcodeDetector' in window ? '<button class="btn secondary" type="button" id="scan-cam">Scan with camera</button>' : ''}</form>
-      <video id="scan-video" class="scan-video" hidden muted playsinline></video><div id="pass-result"></div>`;
+        <button class="btn secondary" type="button" id="scan-cam">Scan with camera</button></form>
+      <div id="scan-reader" class="scan-video" hidden></div><div id="pass-result"></div>`;
     const result = $('#pass-result');
-    let stream = null, timer = null;
-    const stopCam = () => { clearInterval(timer); if (stream) stream.getTracks().forEach(t => t.stop()); stream = null; const v = $('#scan-video'); if (v) v.hidden = true; };
+    let scanner = null, scanning = false;
+    async function stopCam() {
+      if (scanner && scanning) { try { await scanner.stop(); } catch (_) {} }
+      if (scanner) { try { scanner.clear(); } catch (_) {} }
+      scanner = null; scanning = false;
+      const reader = $('#scan-reader'); if (reader) { reader.hidden = true; reader.innerHTML = ''; }
+    }
     async function find(code) {
       code = code.trim();
       if (!code) return;
@@ -928,16 +984,21 @@
       } catch (err) { result.innerHTML = alertHtml(err.message); }
     }
     $('#pass-form').addEventListener('submit', e => { e.preventDefault(); find($('#pass-code').value); });
-    const cam = $('#scan-cam');
-    if (cam) cam.addEventListener('click', async () => {
+    $('#scan-cam').addEventListener('click', async () => {
+      if (typeof Html5Qrcode === 'undefined') { toast('QR scanner library did not load. Check your internet connection, then refresh.', 'error'); return; }
+      const reader = $('#scan-reader'); reader.hidden = false;
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-        const v = $('#scan-video'); v.srcObject = stream; v.hidden = false; await v.play();
-        const det = new BarcodeDetector({ formats: ['qr_code'] });
-        timer = setInterval(async () => {
-          try { const found = await det.detect(v); if (found.length) { $('#pass-code').value = found[0].rawValue; stopCam(); find(found[0].rawValue); } } catch (e) { /* keep trying */ }
-        }, 400);
-      } catch (err) { toast('The camera could not be opened. Type the code instead.', 'error'); }
+        scanner = new Html5Qrcode('scan-reader');
+        scanning = true;
+        await scanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 240, height: 240 } }, async decodedText => {
+          $('#pass-code').value = decodedText;
+          await stopCam();
+          find(decodedText);
+        }, () => {});
+      } catch (err) {
+        scanning = false; reader.hidden = true;
+        toast('Could not open the camera. Allow camera access and use localhost or HTTPS.', 'error');
+      }
     });
     window.addEventListener('hashchange', stopCam, { once: true });
   }
