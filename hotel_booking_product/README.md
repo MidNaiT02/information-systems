@@ -39,7 +39,7 @@ Demo staff accounts (change the passwords before any real use, see "Settings"):
 
 | Who | Page | What it does |
 |---|---|---|
-| Guest | Rooms | Search free rooms for two dates (one card per room type with the number of free rooms), book a room, see the reservation number |
+| Guest | Rooms | Search free rooms for two dates, see the total number of free rooms and the number available per type, filter by Standard, Deluxe, Suite or President, book a room, see the reservation number |
 | Guest | Rooms, Flexible dates | Under the search results: the same number of nights starting up to 7 days earlier or later, with the price and free rooms per room type. The cheapest option is marked, "Use these dates" searches again |
 | Guest | Booking confirmation, My booking | A QR check-in pass and a pass code like `HB123-A1B2C3` (shown while the reservation is Confirmed) |
 | Guest, front desk, manager | Guide (button at the bottom right) | A small offline helper that explains where things are for the current role, opens the right page and answers a few live questions (free rooms tonight, dirty rooms, price suggestions). Rule based, no internet, nothing leaves the page |
