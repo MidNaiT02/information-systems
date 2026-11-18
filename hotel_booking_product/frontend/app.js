@@ -5,7 +5,7 @@
   const $ = (sel, root = document) => root.querySelector(sel);
   const app = $('#app'), nav = $('#nav'), dlg = $('#dlg'), toastEl = $('#toast');
   const state = { user: null, csrf: null, search: null, filter: { status: '', q: '', from: '', to: '', order: 'desc', size: 50, page: 1 }, dash: { from: '', to: '' }, cal: { from: '', to: '' }, refreshAfterClose: false };
-
+ 
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const money = n => Math.round(Number(n) || 0).toLocaleString('ru-RU') + ' KZT';
   const pad = n => String(n).padStart(2, '0');
