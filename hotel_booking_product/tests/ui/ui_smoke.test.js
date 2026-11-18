@@ -52,7 +52,16 @@ const setv = (w, el, v) => { el.value = v; fire(w, el, 'input'); };
   await until(() => w.document.querySelectorAll('.plaque').length > 0, 'room plaques');
   const plaques = w.document.querySelectorAll('.plaque').length;
   check('free rooms are shown as one plaque per room type (4 expected)', plaques === 4, String(plaques));
-  check('the header counts the 160 bookable rooms', text(w, '.count').includes('160 rooms free'), text(w, '.count'));
+  check('the header counts the 160 bookable rooms', text(w, '.count').includes('160 rooms free in total'), text(w, '.count'));
+  check('room type filter lists all four types', ['Standard', 'Deluxe', 'Suite', 'President'].every(type => text(w, '#room-type-filter').includes(type)));
+  check('filter dropdown shows the free count for Standard', [...w.document.querySelectorAll('#room-type-filter option')].some(o => o.value === 'Standard' && o.textContent.includes('(99)')));
+  const typeFilter = w.document.querySelector('#room-type-filter');
+  typeFilter.value = 'Suite'; fire(w, typeFilter, 'change');
+  check('selecting Suite shows only Suite rooms', w.document.querySelectorAll('.plaque').length === 1 && text(w, '.plaque').includes('Suite') && !text(w, '.plaque').includes('Standard'));
+  check('filtered count updates to the selected type', text(w, '.filter-count').includes('Showing 10 of 160 free rooms'));
+  const allTypes = w.document.querySelector('#room-type-filter');
+  allTypes.value = 'All'; fire(w, allTypes, 'change');
+  await until(() => w.document.querySelectorAll('.plaque').length === 4, 'all room types restored');
   click(w, w.document.querySelector('[data-book]'));
   await until(() => w.document.querySelector('#dlg').open && w.document.querySelector('#book-form'), 'booking dialog');
   const f = w.document.querySelector('#book-form');
@@ -64,7 +73,7 @@ const setv = (w, el, v) => { el.value = v; fire(w, el, 'input'); };
   check('confirmation mentions the email', text(w, '#dlg').includes('ui@example.kz'));
   click(w, w.document.querySelector('#dlg [data-close]'));
   await until(() => !w.document.querySelector('#dlg').open, 'dialog closed');
-  check('booked room disappears from the results', text(w, '.count').includes('159 rooms free'), text(w, '.count'));
+  check('booked room disappears from the results', text(w, '.count').includes('159 rooms free in total'), text(w, '.count'));
 
   // double booking through the UI: same room and dates from a second visitor
   let w2 = await newBrowser();
