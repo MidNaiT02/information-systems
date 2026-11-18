@@ -201,6 +201,11 @@ details summary { cursor: pointer; color: var(--teal); }
 input[type="checkbox"] { width: auto; accent-color: var(--brass); }
 .sr { position: absolute; left: -999px; }
 .count { margin-top: 1.5rem; color: var(--teal); text-transform: uppercase; letter-spacing: .08em; }
+.results-tools { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: .7rem 1.5rem; margin-top: 1.5rem; padding: .85rem 1rem; background: var(--surface-2); border-left: 5px solid var(--teal); }
+.results-tools .count { margin: 0 0 .25rem; color: var(--brass); font-weight: 700; }
+.results-tools .filter-count { margin: 0; font-size: .95rem; }
+.room-type-filter { width: min(100%, 270px); }
+.room-type-filter select { width: 100%; }
 .panel.gap { margin-bottom: 1.8rem; }
 
 .pager { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; margin-top: 1rem; }
