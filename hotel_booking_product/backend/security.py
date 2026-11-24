@@ -26,8 +26,13 @@ def verify_password(password, salt_hex, hash_hex):
     return hmac.compare_digest(candidate, hash_hex)
 
 
-def _token_hash(token):
-    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+def token_hash(token):
+    """One-way digest for bearer tokens; raw tokens must never be stored."""
+    return hashlib.sha256(str(token).encode("utf-8")).hexdigest()
+
+
+# Backwards-compatible private name used by existing session code.
+_token_hash = token_hash
 
 
 def new_session(conn, staff_id):
@@ -88,3 +93,48 @@ def end_other_sessions(conn, staff_id, keep_token=None):
     """After a password change every other login of this person is ended."""
     keep = _token_hash(keep_token) if keep_token else ""
     conn.execute("DELETE FROM sessions WHERE staff_id = ? AND token_hash != ?", (staff_id, keep))
+
+
+# Guest/customer accounts use a separate cookie and session table so staff roles
+# and permissions can never be inherited by a customer account.
+def new_guest_session(conn, guest_account_id):
+    token = secrets.token_urlsafe(32)
+    csrf = secrets.token_urlsafe(24)
+    expires = (_now_utc() + timedelta(hours=SESSION_HOURS)).strftime(_FMT)
+    conn.execute("DELETE FROM guest_sessions WHERE expires_at < ?", (_now_utc().strftime(_FMT),))
+    conn.execute("INSERT INTO guest_sessions(token_hash, account_id, csrf_token, expires_at) VALUES (?,?,?,?)",
+                 (_token_hash(token), guest_account_id, csrf, expires))
+    return token, csrf
+
+def get_guest_session(conn, token):
+    if not token:
+        return None
+    row = conn.execute(
+        """SELECT a.account_id, g.guest_id, g.full_name, g.email, g.phone, s.csrf_token, s.expires_at
+           FROM guest_sessions s JOIN guest_accounts a ON a.account_id=s.account_id
+           JOIN guests g ON g.guest_id=a.guest_id WHERE s.token_hash=?""",
+        (_token_hash(token),)).fetchone()
+    if row is None or row["expires_at"] < _now_utc().strftime(_FMT):
+        return None
+    return {"account_id": row["account_id"], "guest_id": row["guest_id"],
+            "name": row["full_name"], "email": row["email"], "phone": row["phone"], "csrf": row["csrf_token"], "role": "Guest"}
+
+def end_guest_session(conn, token):
+    if token:
+        conn.execute("DELETE FROM guest_sessions WHERE token_hash=?", (_token_hash(token),))
+
+def check_guest_login(conn, email, password):
+    row = conn.execute(
+        """SELECT a.account_id, a.salt, a.password_hash, g.guest_id, g.full_name, g.email, g.phone
+           FROM guest_accounts a JOIN guests g ON g.guest_id=a.guest_id
+           WHERE lower(g.email)=lower(?)""", (email,)).fetchone()
+    if row is None:
+        verify_password(password, _DUMMY_SALT, _DUMMY_HASH)
+        return None
+    return row if verify_password(password, row["salt"], row["password_hash"]) else None
+
+
+def end_other_guest_sessions(conn, account_id, keep_token=None):
+    """End every other active guest session after a password change."""
+    keep = _token_hash(keep_token) if keep_token else ""
+    conn.execute("DELETE FROM guest_sessions WHERE account_id = ? AND token_hash != ?", (account_id, keep))

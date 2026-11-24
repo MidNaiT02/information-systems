@@ -7,6 +7,7 @@ from datetime import date, datetime, timedelta
 
 import db
 import qr
+import security
 
 HK_STATUSES = ("Dirty", "Clean", "Inspected")
 CHECK_OUT_HOUR = 12                 # a guest is treated as gone at 12:00 on the check-out date
@@ -45,9 +46,11 @@ def seed_housekeeping(conn, today=None):
 
 
 # ---------------------------------------------------------------- booking pass (QR) and check-in
-def pass_code(reservation_id, email, created_at):
-    digest = hashlib.sha256(f"{reservation_id}|{str(email).lower()}|{created_at}".encode()).hexdigest()
-    return f"HB{reservation_id}-{digest[:6].upper()}"
+def pass_code(reservation_id, email, created_at, secret):
+    """Create a keyed, 128-bit check-in code; guest details are not used as the key."""
+    message = f"{reservation_id}|{created_at}".encode("utf-8")
+    digest = hmac.new(bytes.fromhex(secret), message, hashlib.sha256).hexdigest()
+    return f"HB{reservation_id}-{digest[:32].upper()}"
 
 
 def pass_for(conn, reservation_id):
@@ -56,7 +59,10 @@ def pass_for(conn, reservation_id):
                           JOIN guests g ON g.guest_id = r.guest_id WHERE r.reservation_id = ?""", (reservation_id,)).fetchone()
     if row is None:
         return None
-    code = pass_code(row["reservation_id"], row["email"], row["created_at"])
+    secret_row = conn.execute("SELECT value FROM app_secrets WHERE name='pass_secret'").fetchone()
+    if secret_row is None:
+        raise db.BookingError("The check-in pass secret is not configured.", 503, "pass_secret_missing")
+    code = pass_code(row["reservation_id"], row["email"], row["created_at"], secret_row["value"])
     return {"code": code, "qr_svg": qr.to_svg(code)}
 
 
@@ -71,7 +77,7 @@ def resolve_pass(conn, text):
         if expected is None or not hmac.compare_digest(expected["code"], text):
             raise db.BookingError("This pass code is not valid. Check the code and try again.", 404, "bad_pass")
     else:
-        raise db.BookingError("Enter a pass code like HB123-A1B2C3, or a reservation number.", 400, "bad_pass")
+        raise db.BookingError("Enter the full check-in pass code or a reservation number.", 400, "bad_pass")
     if conn.execute("SELECT 1 FROM reservations WHERE reservation_id = ?", (number,)).fetchone() is None:
         raise db.BookingError("No reservation found for this code.", 404, "not_found")
     return number

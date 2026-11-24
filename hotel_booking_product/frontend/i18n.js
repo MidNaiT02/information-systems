@@ -1,37 +1,636 @@
-/* Small shared EN/RU/KZ interface dictionary. Extend this map as new UI copy is added. */
+/* EN / RU / KZ interface translations. Text is translated from its original
+   English value, so switching languages repeatedly never corrupts the copy. */
 (() => {
+  'use strict';
+
   const D = {
-    en: {},
     ru: {
-      'Rooms':'Номера','My booking':'Моё бронирование','Staff':'Персонал','Account':'Аккаунт','Log out':'Выйти',
-      'Reservations':'Бронирования','Calendar':'Календарь','Floor map':'План этажей','Housekeeping':'Уборка','Check-in':'Заселение',
-      'Loyalty':'Программа лояльности','Maintenance':'Техобслуживание','Reviews':'Отзывы','Email outbox':'Исходящие письма','Dashboard':'Панель управления','Prices':'Цены',
-      'Open':'Открыта','In Progress':'В работе','Resolved':'Решена','Cancelled':'Отменена','Create ticket':'Создать заявку',
-      'Guest reviews':'Отзывы гостей','Review your stay':'Оцените проживание','Submit review':'Отправить отзыв','Language':'Язык'
+      'Hotel Booking System':'Система бронирования отеля',
+      'Rooms':'Номера','My reservations':'Мои бронирования','Staff':'Персонал','Account':'Аккаунт','Log out':'Выйти','Sign in / Register':'Войти / Регистрация',
+      'Visual style':'Стиль оформления','System interface':'Системный интерфейс','Language':'Язык','Official':'Официальный','Official & Premium':'Официальный и премиальный','Daltonism-safe':'Для людей с дальтонизмом','Color-blind accessible':'Для людей с нарушением цветового зрения','GTA VI Style':'Стиль GTA VI','Cyberpunk':'Киберпанк','Cyberpunk Style':'Стиль киберпанк','Front desk':'Стойка регистрации','FrontDesk':'Стойка регистрации',
+      'Which nights do you need?':'На какие даты нужен номер?','Pick your dates and see the rooms that are free. Booking takes about a minute.':'Выберите даты и посмотрите свободные номера. Бронирование займёт около минуты.',
+      'Check-in':'Заезд','Check-out':'Выезд','Search rooms':'Найти номера','Search available rooms':'Найти свободные номера','Choose both dates.':'Выберите обе даты.','Looking for free rooms...':'Ищем свободные номера...','Comparing nearby dates...':'Сравниваем цены на соседние даты...',
+      'Flexible dates':'Гибкие даты','Shift by':'Сдвинуть на','Days to shift':'На сколько дней сдвинуть даты','Sold out':'Нет мест','Same':'Столько же','The cheapest option is marked.':'Самый выгодный вариант отмечен.','Prices are the same on every date, so shifting helps only when your room type is sold out.':'Цены одинаковы на все даты, поэтому перенос поможет только при отсутствии свободных номеров нужного типа.',
+      'Filter by room type':'Фильтр по типу номера','All room types':'Все типы номеров','All':'Все','Standard':'Стандарт','Deluxe':'Делюкс','Suite':'Люкс','President':'Президентский',
+      'Floor':'Этаж','Sleeps':'Вместимость','room':'номер','rooms':'номера','night':'ночь','nights':'ночи','free':'свободно','Book this room':'Забронировать номер','No':'№','Try other dates, or a shorter stay.':'Попробуйте другие даты или сократите срок проживания.','Choose another room type or change your dates.':'Выберите другой тип номера или измените даты.',
+      'Book room':'Забронировать номер','Room':'Номер','Stay':'Проживание','Nights':'Ночей','Total':'Итого','Full name':'Полное имя','Phone':'Телефон','Email':'Электронная почта','Payment method':'Способ оплаты','Optional extras':'Дополнительные услуги','Breakfast':'Завтрак','Airport transfer':'Трансфер из аэропорта','Late check-out':'Поздний выезд','Card':'Карта','Cash':'Наличные','Transfer':'Перевод','Repeat guests automatically receive their loyalty discount at booking. The tier and discount are saved with the reservation.':'Постоянные гости автоматически получают скидку программы лояльности. Уровень и скидка сохраняются в бронировании.','Payment is simulated in this prototype. No card number is asked for or stored.':'В этой версии оплата имитируется. Данные банковской карты не запрашиваются и не сохраняются.','Demo tools':'Демонстрационные настройки','Simulate a payment failure (nothing is saved)':'Имитировать ошибку оплаты (данные не сохраняются)','Confirm and pay':'Подтвердить и оплатить','Back':'Назад','Close':'Закрыть',
+      'My reservations':'Мои бронирования','All reservations saved to':'Все бронирования, сохранённые для','appear here automatically. No booking number or QR code is needed.':'появляются здесь автоматически. Номер бронирования или QR-код не нужны.','Refresh history':'Обновить историю','Book another stay':'Забронировать ещё раз','Loading your reservations...':'Загружаем ваши бронирования...','No reservations yet':'Пока нет бронирований','Your future bookings will be saved to this account automatically.':'Будущие бронирования будут автоматически сохраняться в этом аккаунте.','Reservation history':'История бронирований','View booking':'Открыть бронирование','Reservations found:':'Найдено бронирований:','Reservation #':'Бронирование №','Looking for your booking...':'Ищем ваше бронирование...','Search by QR code, reservation number, or email':'Поиск по QR-коду, номеру бронирования или электронной почте',
+      'Guest':'Гость','Price':'Цена','Paid':'Оплачено','Status':'Статус','Actions':'Действия','Confirmed':'Подтверждено','Completed':'Завершено','Cancelled':'Отменено','Pending':'Ожидает подтверждения','Dirty':'Грязный','Clean':'Убран','Inspected':'Проверен','Open':'Открыта','In Progress':'В работе','Resolved':'Решена','Create ticket':'Создать заявку','Cancel booking':'Отменить бронирование','Change dates':'Изменить даты','Change password':'Изменить пароль','Apply':'Применить','Clear':'Очистить','First':'Первая','Last':'Последняя','Next':'Следующая','Previous':'Предыдущая',
+      'Your loyalty progress':'Ваш прогресс лояльности','member':'участник','discount on eligible room bookings':'скидка на подходящие бронирования','more completed':'осталось завершить','stay':'проживание','stays':'проживания','to unlock':'до получения уровня','You have reached the highest loyalty level. Enjoy your 12% discount.':'Вы достигли высшего уровня программы лояльности. Ваша скидка — 12%.','completed stays':'завершённых проживаний','next level:':'следующий уровень:','maximum level achieved':'достигнут максимальный уровень','Loyalty':'Лояльность','None':'Без уровня','Silver':'Серебряный','Gold':'Золотой','Platinum':'Платиновый',
+      'Staff area':'Панель персонала','Reservations':'Бронирования','Calendar':'Календарь','Floor map':'План этажей','Housekeeping':'Уборка','Check-in':'Заселение','Maintenance':'Техобслуживание','Reviews':'Отзывы','Email outbox':'Исходящие письма','Dashboard':'Панель управления','Prices':'Цены','Guest reviews':'Отзывы гостей','Review your stay':'Оцените проживание','Submit review':'Отправить отзыв','Loading loyalty statistics...':'Загружаем статистику программы лояльности...','Loyalty membership':'Участие в программе лояльности','Guests':'Гости','Total guest accounts:':'Всего аккаунтов гостей:','Maintenance tickets':'Заявки на обслуживание','Room number':'Номер комнаты','Reason':'Причина','Start':'Начало','Expected end':'Ожидаемое завершение','Create ticket':'Создать заявку','Update':'Обновить','Low ratings (1–2 stars):':'Низкие оценки (1–2 звезды):','Needs attention':'Требует внимания','No reviews yet.':'Отзывов пока нет.',
+      'Search':'Поиск','Name, email, room or number':'Имя, email, номер комнаты или бронирования','Check-in from':'Заезд с','Check-in to':'Заезд до','Order':'Сортировка','Latest check-in first':'Сначала ближайшие заезды','Earliest check-in first':'Сначала ранние заезды','Rows per page':'Строк на странице','Download CSV':'Скачать CSV','Loading reservations...':'Загружаем бронирования...','No reservations match this filter.':'Нет бронирований, соответствующих фильтру.','Every booking creates a confirmation email. It is sent right after the booking is saved. Without an SMTP server, sending is simulated and the text is kept here.':'После каждого бронирования создаётся письмо-подтверждение. Оно отправляется сразу после сохранения бронирования. Без SMTP-сервера отправка имитируется, а текст письма хранится здесь.',
+      'Thank you for your review.':'Спасибо за ваш отзыв.','Please fill in only one field. The search works with QR code OR reservation number OR email.':'Заполните только одно поле. Поиск выполняется по QR-коду ИЛИ номеру бронирования ИЛИ электронной почте.','Enter a QR pass code, reservation number, or email.':'Введите код QR-пропуска, номер бронирования или электронную почту.','Your session ended. Log in again.':'Сеанс завершён. Войдите снова.','Interface language changed':'Язык интерфейса изменён','You are logged out.':'Вы вышли из аккаунта.','Sign in':'Войти','Create account':'Создать аккаунт','Password':'Пароль','Current password':'Текущий пароль','New password':'Новый пароль','Confirm password':'Подтвердите пароль','Staff log in':'Вход для персонала',
+      'LIVE':'В СЕТИ',
+      'PLATINUM · 12% OFF':'ПЛАТИНА · СКИДКА 12%',
+      'Official Site':'Официальный сайт',
+      'Free Cancellation':'Бесплатная отмена',
+      'Secure booking':'Безопасное бронирование',
+      'Accessibility':'Доступность',
+      'Privacy policy':'Политика конфиденциальности',
+      'Terms and conditions':'Условия использования',
+      'Contact':'Контакты',
+      'Search panel':'ПАНЕЛЬ ПОИСКА',
+      'Number of guests':'Количество гостей',
+      'Guests':'Гости',
+      'Select room':'Выбрать номер',
+      'Select Room':'Выбрать номер',
+      'Choose room':'Выбрать номер',
+      'Guest details':'Данные гостя',
+      'Payment':'Оплата',
+      'Confirmation':'Подтверждение',
+      'Continue':'Продолжить',
+      'Complete booking':'Завершить бронирование',
+      'Booking reference':'Номер бронирования',
+      'Booking confirmed':'Бронирование подтверждено',
+      'No rooms found':'Номера не найдены',
+      'Try another date range.':'Попробуйте выбрать другие даты.',
+      'Availability':'Наличие мест',
+      'Available':'Доступно',
+      'Unavailable':'Недоступно',
+      'Room capacity':'Вместимость номера',
+      'Your account':'Ваш аккаунт',
+      'Profile updated.':'Профиль обновлён.',
+      'Password changed.':'Пароль изменён.',
+      'After Dark enabled':'Ночной режим включён',
+      'After Dark disabled':'Ночной режим выключен',
+      'Color vision accessibility':'Доступность для людей с нарушением цветового зрения',
+      'Official & Premium':'Официальный и премиальный',
+      'Daltonism-safe':'Для людей с дальтонизмом',
+      'English':'Английский',
+      'Kazakh':'Казахский',
+      'Russian':'Русский',
+      'No account yet?':'Ещё нет аккаунта?',
+      'Forgot password?':'Забыли пароль?',
+      'Email address':'Адрес электронной почты',
+      'Confirm booking':'Подтвердить бронирование',
+      'Manage booking':'Управление бронированием',
+      'Room details':'Информация о номере',
+      'Amenities':'Удобства',
+      'per night':'за ночь',
+      'Room selected':'Номер выбран',
+      'Booking history':'История бронирований',
+      'Front desk account':'Аккаунт сотрудника стойки регистрации',
+      'Manager account':'Аккаунт менеджера',
+      'Guest account':'Аккаунт гостя',
+      'NEON OASIS — NIGHT CITY HOTEL NETWORK':'NEON OASIS — СЕТЬ ОТЕЛЕЙ NIGHT CITY',
+      'THE MARISOL — VICE CITY HOTEL':'THE MARISOL — ОТЕЛЬ VICE CITY',
+      'NEON OASIS — OFFICIAL HOTEL BOOKING':'NEON OASIS — ОФИЦИАЛЬНОЕ БРОНИРОВАНИЕ ОТЕЛЯ',
+      'NEON OASIS — ACCESSIBLE HOTEL BOOKING':'NEON OASIS — ДОСТУПНОЕ БРОНИРОВАНИЕ ОТЕЛЯ',
+      'Skip to content':'Перейти к содержимому',
+      'Main':'Главная навигация',
+      'Hotel announcements':'Объявления отеля',
+      'THE MARISOL · VICE CITY · MIAMI COASTAL CLUB':'THE MARISOL · VICE CITY · ПРИБРЕЖНЫЙ КЛУБ МАЙАМИ',
+      'VICE CITY IS CALLING':'VICE CITY ЗОВЁТ',
+      'WHERE THE SUN NEVER SETS.':'ТАМ, ГДЕ СОЛНЦЕ НИКОГДА НЕ ЗАХОДИТ.',
+      'BÖLME':'НОМЕР',
+      'Sign in or create a guest account first. Then pick check-in and check-out dates on the Rooms page and press Search rooms. Choose a room and confirm the payment method. The reservation is saved to your account, and the confirmation shows a reservation number and a QR check-in pass.':'Сначала войдите или создайте аккаунт гостя. Затем выберите даты заезда и выезда на странице «Номера» и нажмите «Найти номера». Выберите номер и подтвердите способ оплаты. Бронирование сохранится в вашем аккаунте, а подтверждение покажет номер бронирования и QR-пропуск для заселения.',
+      'After you search, the Flexible dates table appears under the results. It shows the same number of nights starting a few days earlier or later, the price per room type and how many rooms are free. Press Use these dates on a row to search again.':'После поиска под результатами появится таблица «Гибкие даты». Она показывает такое же количество ночей с началом на несколько дней раньше или позже, цену каждого типа номера и число свободных номеров. Нажмите «Использовать эти даты», чтобы выполнить поиск повторно.',
+      'Open My reservations after signing in. Your bookings are saved to your guest account automatically, You can view each reservation and cancel eligible stays. The automatic cancellation refund is based on days remaining: 4 or more days = 100%, 2–3 days = 95%, 1 day = 90%, check-in day = 80%, and after check-in = 0%. The exact estimated amount is shown before you confirm cancellation.':'После входа откройте «Мои бронирования». Брони автоматически сохраняются в аккаунте. Вы можете просматривать бронирования и отменять подходящие проживания. Возврат рассчитывается по оставшимся дням: 4 дня и более — 100%, 2–3 дня — 95%, 1 день — 90%, день заезда — 80%, после заселения — 0%. Точная сумма показывается до подтверждения отмены.',
+      'Your QR check-in pass is shown on the booking confirmation and under My reservations while the reservation is confirmed. At the front desk, show the QR code or read out the pass code that starts with HB and includes your reservation number.':'QR-пропуск отображается в подтверждении бронирования и в разделе «Мои бронирования», пока бронь подтверждена. На стойке регистрации покажите QR-код или назовите код, который начинается с HB и содержит номер бронирования.',
+      'Check-in starts at 14:00 on the arrival date. Guests leave by 12:00 on the departure date, and the room then goes to housekeeping.':'Заезд начинается в 14:00 в день прибытия. Выезд — до 12:00 в день отъезда, после чего номер передаётся на уборку.',
+      'You choose Card, Cash or Transfer when booking. Payment is simulated in this prototype and no card number is asked for or stored.':'При бронировании можно выбрать карту, наличные или перевод. В этом прототипе платёж имитируется; данные банковской карты не запрашиваются и не сохраняются.',
+      'A confirmation email is sent right after booking. In this prototype it is written to the Email outbox unless SMTP is configured. Front desk staff can send it again from the Email outbox tab.':'Письмо с подтверждением создаётся сразу после бронирования. Если SMTP не настроен, оно сохраняется в разделе «Исходящие письма». Сотрудники стойки регистрации могут отправить его повторно.',
+      'Staff sign in on the Staff page with their work email and password. After signing in you can change your own password from Account in the top bar.':'Сотрудники входят на странице «Персонал» с рабочей электронной почтой и паролем. После входа можно изменить собственный пароль в разделе «Аккаунт» в верхней панели.',
+      'I am a small helper built into this page. I know where things are for guests, front desk and manager, I can open the right page, and I can answer a few live questions such as which rooms are dirty or free tonight. I do not use the internet.':'Я встроенный помощник этой страницы. Я знаю, где находятся функции для гостей, стойки регистрации и менеджера, могу открыть нужную страницу и ответить на некоторые вопросы в реальном времени — например, какие номера грязные или свободны сегодня ночью. Я не использую интернет.',
+      'The end date must not be before the start date.':'Дата окончания не может быть раньше даты начала.',
+      'Ask guide':'Спросить помощника',
+      'Ask where something is...':'Спросите, где находится нужная функция...',
+      'Your question':'Ваш вопрос',
+      'Close guide':'Закрыть помощника',
+      'Navigation guide':'Навигационный помощник',
+      'Guide':'Помощник',
+      'Ask':'Спросить',
+      'Also related: ':'Также связано: ',
+      'Type a question, for example: how do I check in a guest?':'Введите вопрос, например: как зарегистрировать заезд гостя?',
+      'Hello! Ask me where something is or how to do it, for example: ':'Здравствуйте! Спросите, где находится функция или как её использовать, например: ',
+      'You are welcome!':'Пожалуйста!',
+      'Something went wrong. Please try again.':'Что-то пошло не так. Попробуйте ещё раз.',
+      'Nothing to clean.':'Убирать нечего.',
+      'Book a room':'Забронировать номер',
+      'Cancel my booking':'Отменить моё бронирование',
+      'Check in a guest':'Зарегистрировать заезд гостя',
+      'Dashboard date filter':'Фильтр дат панели управления',
+      'Open the floor map':'Открыть план этажей',
+      'Resend an email':'Отправить письмо повторно',
+      'Show cheaper dates':'Показать более дешёвые даты',
+      'Where is my QR pass?':'Где мой QR-пропуск?',
+      'Which rooms are dirty?':'Какие номера грязные?',
+      'Use the date filter to look at any period.':'Используйте фильтр дат, чтобы просмотреть любой период.',
+      'Pick your dates and press Search rooms. Under the results, Flexible dates compares nearby days.':'Выберите даты и нажмите «Найти номера». Под результатами раздел «Гибкие даты» сравнивает соседние дни.',
+      'Sign in to view your reservation history, QR check-in passes and eligible cancellations.':'Войдите, чтобы просмотреть историю бронирований, QR-пропуска для заселения и доступные варианты отмены.',
+      'Log in, then use the tabs: reservations, floor map, housekeeping, check-in.':'Войдите в систему и используйте вкладки: бронирования, план этажей, уборка и заселение.',
+      'Filter, sort, change dates or cancel. Managers can also download CSV.':'Фильтруйте, сортируйте, меняйте даты или отменяйте бронирования. Менеджеры также могут скачать CSV.',
+      'Booked nights for every room over a range of dates.':'Забронированные ночи для каждого номера за выбранный период.',
+      'Click a room tile for its guest and quick actions. Pick any date.':'Нажмите на номер, чтобы увидеть гостя и быстрые действия. Выберите любую дату.',
+      'Clean the priority rooms first, then inspect them.':'Сначала уберите приоритетные номера, затем проверьте их.',
+      'Scan or type the pass code, then press Check in.':'Отсканируйте или введите код пропуска, затем нажмите «Заселить».',
+      'Resend a confirmation email with one click.':'Отправить письмо с подтверждением повторно одним нажатием.',
+      'See how many guests belong to each tier.':'Посмотреть количество гостей на каждом уровне.',
+      'Create and update room maintenance tickets.':'Создавать и обновлять заявки на обслуживание номеров.',
+      'Read guest reviews and follow up on low ratings.':'Просматривать отзывы гостей и обрабатывать низкие оценки.',
+      'Read the suggestions, apply one or type a new price.':'Просмотрите рекомендации, примените одну из них или введите новую цену.',
+      'The price is per night and depends on the room type. Search your dates on the Rooms page to see the exact total.':'Цена указана за ночь и зависит от типа номера. Найдите нужные даты на странице номеров, чтобы увидеть итоговую сумму.',
+      'Search the Rooms page for tonight to see what is free.':'Выполните поиск на странице номеров на сегодняшнюю ночь, чтобы увидеть свободные варианты.',
+      'No rooms are free tonight.':'Сегодня на ночь свободных номеров нет.',
+      'Free tonight: ':'Свободно сегодня ночью: ',
+      'Right now: ':'Сейчас: ',
+      'dirty, ':'грязных, ',
+      'cleaned and waiting for inspection, ':'убрано и ожидает проверки, ',
+      'ready. ':'готово. ',
+      'priority (guest arrives today).':'приоритетных (гость прибывает сегодня).',
+      'First rooms: ':'Первые номера: ',
+      'No change suggested today: demand looks normal for every room type.':'Сегодня изменение не рекомендуется: спрос на все типы номеров обычный.',
+      'Suggestions now: ':'Текущие рекомендации: ',
+      'Only the Manager role can open that. Ask your manager, or log in with a manager account.':'Открыть это может только менеджер. Обратитесь к руководителю или войдите в аккаунт менеджера.',
+      'I did not find that. Try a few key words, for example "floor map", "cancel booking" or "check in".':'Не удалось найти ответ. Попробуйте ключевые слова: «план этажей», «отменить бронирование» или «заселение».',
+      'Open Rooms':'Открыть номера',
+      'Open My reservations':'Открыть мои бронирования',
+      'Open Staff':'Открыть панель персонала',
+      'Open Check-in':'Открыть заселение',
+      'Open Floor map':'Открыть план этажей',
+      'Open Housekeeping':'Открыть уборку',
+      'Open Reservations':'Открыть бронирования',
+      'Open Calendar':'Открыть календарь',
+      'Open Loyalty':'Открыть лояльность',
+      'Open Maintenance':'Открыть техобслуживание',
+      'Open Reviews':'Открыть отзывы',
+      'Open Email outbox':'Открыть исходящие письма',
+      'Open Dashboard':'Открыть панель управления',
+      'Open Prices':'Открыть цены',
+      'Manager':'Менеджер',
+      'Refund':'Возврат',
+      'Leaving':'Выезд',
+      'Arriving':'Заезд',
+      'Check in':'Заселение',
+      'Check out':'Выезд',
+      'Occupied':'Занято',
+      'To clean':'Требуется уборка',
+      'Hotel team':'Команда отеля',
+      'Mark clean':'Отметить как убранный',
+      'Next guest':'Следующий гость',
+      'To inspect':'Требуется проверка',
+      'Change price':'Изменить цену',
+      'Hotel member':'Участник программы отеля',
+      'Previous day':'Предыдущий день',
+      'Report dirty':'Отметить как грязный',
+      'last 14 days':'последние 14 дней',
+      'Check-in date':'Дата заезда',
+      'Guest profile':'Профиль гостя',
+      'Add-on revenue':'Доход от дополнительных услуг',
+      'Extra payment':'Доплата',
+      'Mark inspected':'Отметить проверенным',
+      'Reset password':'Сбросить пароль',
+      'Staff sections':'Разделы персонала',
+      'No price change':'Без изменения цены',
+      'Under maintenance':'На техническом обслуживании',
+      'Cancel reservation':'Отменить бронирование',
+      'Clean these first.':'Сначала выполните уборку.',
+      'Front desk profile':'Профиль сотрудника стойки регистрации',
+      'Hotel team account':'Аккаунт сотрудника отеля',
+      'Management profile':'Профиль руководителя',
+      'Hotel announcements':'Объявления отеля',
+      'Net revenue per day':'Чистая выручка за день',
+      'Ready for check-in.':'Готово к заселению.',
+      'The request failed.':'Не удалось выполнить запрос.',
+      'Your contact number':'Ваш контактный номер',
+      'Filter rooms by type':'Фильтровать номера по типу',
+      'Reset guest password':'Сбросить пароль гостя',
+      'Change guest password':'Изменить пароль гостя',
+      'Open loyalty progress':'Открыть прогресс программы лояльности',
+      'Enter a price above 0.':'Введите цену больше 0.',
+      'Toggle After Dark mode':'Переключить ночной режим',
+      'Guest password changed.':'Пароль гостя изменён.',
+      'Occupancy in the period':'Загрузка за период',
+      'Occupancy, next 30 days':'Загрузка на следующие 30 дней',
+      'Net revenue by room type':'Чистая выручка по типам номеров',
+      'Add a work contact number':'Добавить рабочий контактный номер',
+      'Reservations by room type':'Бронирования по типам номеров',
+      'Guest leaves today (12:00)':'Гость выезжает сегодня (12:00)',
+      'Priority: guest arrives today':'Приоритет: сегодня ожидается заезд гостя',
+      'Choose between 1 and 8 guests.':'Выберите от 1 до 8 гостей.',
+      'The new passwords do not match.':'Новые пароли не совпадают.',
+      'The two new passwords are not the same.':'Два новых пароля не совпадают.',
+      'Enter the recovery code from your email.':'Введите код восстановления из письма.',
+      'Password reset. Sign in with your new password.':'Пароль сброшен. Войдите с новым паролем.',
+      'The end date must not be before the start date.':'Дата окончания не может быть раньше даты начала.',
+      'Your permissions are based on your assigned hotel role.':'Ваши права доступа определяются назначенной ролью в отеле.',
+      'Cannot reach the server. Check the connection and try again.':'Не удаётся подключиться к серверу. Проверьте соединение и повторите попытку.',
+      'Could not open the camera. Allow camera access and use localhost or HTTPS.':'Не удалось открыть камеру. Разрешите доступ к камере и используйте localhost или HTTPS.',
+      'The confirmation email could not be sent. The front desk can send it again.':'Не удалось отправить письмо с подтверждением. Сотрудник стойки регистрации может отправить его повторно.',
+      'QR scanner library did not load. Check your internet connection, then refresh.':'Библиотека сканера QR не загрузилась. Проверьте подключение к интернету и обновите страницу.',
+      'Official booking service · Secure reservations':'Официальная система бронирования · Безопасное бронирование',
+      'Clear information. Predictable navigation. Equal access to every booking function.':'Понятная информация. Предсказуемая навигация. Равный доступ ко всем функциям бронирования.',
+      '© 2026 NEON OASIS HOTEL. All rights reserved.':'© 2026 NEON OASIS HOTEL. Все права защищены.',
+      'Privacy & security':'Конфиденциальность и безопасность',
+      'Accessibility statement':'Заявление о доступности',
+      'ACCESSIBLE HOTEL RESERVATIONS':'ДОСТУПНОЕ БРОНИРОВАНИЕ ОТЕЛЯ',
+      'OFFICIAL HOTEL RESERVATIONS':'ОФИЦИАЛЬНОЕ БРОНИРОВАНИЕ ОТЕЛЯ',
     },
     kz: {
-      'Rooms':'Бөлмелер','My booking':'Менің брондауым','Staff':'Қызметкерлер','Account':'Аккаунт','Log out':'Шығу',
-      'Reservations':'Брондаулар','Calendar':'Күнтізбе','Floor map':'Қабат жоспары','Housekeeping':'Тазалық','Check-in':'Тіркеу',
-      'Loyalty':'Адалдық бағдарламасы','Maintenance':'Жөндеу','Reviews':'Пікірлер','Email outbox':'Жіберілген хаттар','Dashboard':'Басқару тақтасы','Prices':'Бағалар',
-      'Open':'Ашық','In Progress':'Орындалуда','Resolved':'Шешілді','Cancelled':'Бас тартылды','Create ticket':'Өтінім жасау',
-      'Guest reviews':'Қонақ пікірлері','Review your stay':'Тұруды бағалаңыз','Submit review':'Пікір жіберу','Language':'Тіл'
+      'Hotel Booking System':'Қонақүйді брондау жүйесі',
+      'Rooms':'Бөлмелер','My reservations':'Менің брондауларым','Staff':'Қызметкерлер','Account':'Аккаунт','Log out':'Шығу','Sign in / Register':'Кіру / Тіркелу',
+      'Visual style':'Көрініс стилі','System interface':'Жүйелік интерфейс','Language':'Тіл','Official':'Ресми','Official & Premium':'Ресми және премиум','Daltonism-safe':'Дальтонизмі бар адамдарға арналған','Color-blind accessible':'Түсті ажыратуы қиын адамдарға арналған','GTA VI-inspired':'GTA VI стилінде','GTA VI Style':'GTA VI СТИЛІ','Cyberpunk':'Киберпанк','Cyberpunk Style':'КИБЕРПАНК СТИЛІ','Front desk':'Қабылдау бөлімі','FrontDesk':'Қабылдау бөлімі',
+      'Which nights do you need?':'Қай күндерге бөлме қажет?','Pick your dates and see the rooms that are free. Booking takes about a minute.':'Күндерді таңдап, бос бөлмелерді көріңіз. Брондау шамамен бір минут алады.',
+      'Check-in':'Кіру күні','Check-out':'Шығу күні','Search rooms':'Бөлмелерді іздеу','Search available rooms':'Бос бөлмелерді іздеу','Choose both dates.':'Екі күнді де таңдаңыз.','Looking for free rooms...':'Бос бөлмелер ізделуде...','Comparing nearby dates...':'Жақын күндердегі бағалар салыстырылуда...',
+      'Flexible dates':'Икемді күндер','Shift by':'Күнді жылжыту','Days to shift':'Қанша күнге жылжыту','Sold out':'Бос орын жоқ','Same':'Бірдей','The cheapest option is marked.':'Ең арзан нұсқа белгіленген.','Prices are the same on every date, so shifting helps only when your room type is sold out.':'Барлық күндердегі бағалар бірдей, сондықтан күнді ауыстыру тек қажетті бөлме түрі бос болмаған жағдайда көмектеседі.',
+      'Filter by room type':'Бөлме түрі бойынша сүзгі','All room types':'Барлық бөлме түрлері','All':'Барлығы','Standard':'Стандарт','Deluxe':'Делюкс','Suite':'Люкс','President':'Президенттік',
+      'Floor':'Қабат','Sleeps':'Сыйымдылығы','room':'бөлме','rooms':'бөлме','night':'түн','nights':'түн','free':'бос','Book this room':'Осы бөлмені брондау','No':'№','Try other dates, or a shorter stay.':'Басқа күндерді немесе қысқа мерзімді таңдап көріңіз.','Choose another room type or change your dates.':'Басқа бөлме түрін таңдаңыз немесе күндерді өзгертіңіз.',
+      'Book room':'Бөлмені брондау','Room':'Бөлме','Stay':'Тұру','Nights':'Түн саны','Total':'Барлығы','Full name':'Толық аты-жөні','Phone':'Телефон','Email':'Электрондық пошта','Payment method':'Төлем әдісі','Optional extras':'Қосымша қызметтер','Breakfast':'Таңғы ас','Airport transfer':'Әуежайдан трансфер','Late check-out':'Кеш шығу','Card':'Карта','Cash':'Қолма-қол ақша','Transfer':'Аударым','Repeat guests automatically receive their loyalty discount at booking. The tier and discount are saved with the reservation.':'Тұрақты қонақтар брондау кезінде адалдық бағдарламасының жеңілдігін автоматты түрде алады. Деңгей мен жеңілдік брондауда сақталады.','Payment is simulated in this prototype. No card number is asked for or stored.':'Бұл нұсқада төлем тек имитацияланады. Банк картасының нөмірі сұралмайды және сақталмайды.','Demo tools':'Демо баптаулары','Simulate a payment failure (nothing is saved)':'Төлем қатесін имитациялау (деректер сақталмайды)','Confirm and pay':'Растау және төлеу','Back':'Артқа','Close':'Жабу',
+      'My reservations':'Менің брондауларым','All reservations saved to':'үшін сақталған барлық брондаулар','appear here automatically. No booking number or QR code is needed.':'осында автоматты түрде көрсетіледі. Брондау нөмірі немесе QR код қажет емес.','Refresh history':'Тарихты жаңарту','Book another stay':'Тағы бір рет брондау','Loading your reservations...':'Брондауларыңыз жүктелуде...','No reservations yet':'Әзірге брондау жоқ','Your future bookings will be saved to this account automatically.':'Болашақ брондауларыңыз осы аккаунтқа автоматты түрде сақталады.','Reservation history':'Брондау тарихы','View booking':'Брондауды көру','Reservations found:':'Табылған брондаулар:','Reservation #':'Брондау №','Looking for your booking...':'Брондауыңыз ізделуде...',
+      'Guest':'Қонақ','Price':'Баға','Paid':'Төленді','Status':'Мәртебесі','Actions':'Әрекеттер','Confirmed':'Расталды','Completed':'Аяқталды','Cancelled':'Бас тартылды','Pending':'Күтуде','Dirty':'Лас','Clean':'Тазартылды','Inspected':'Тексерілді','Open':'Ашық','In Progress':'Орындалуда','Resolved':'Шешілді','Create ticket':'Өтінім жасау','Cancel booking':'Брондаудан бас тарту','Change dates':'Күндерді өзгерту','Change password':'Құпиясөзді өзгерту','Apply':'Қолдану','Clear':'Тазарту','First':'Бірінші','Last':'Соңғы','Next':'Келесі','Previous':'Алдыңғы',
+      'Your loyalty progress':'Адалдық бағдарламасындағы прогрессіңіз','member':'мүшесі','discount on eligible room bookings':'жарамды бөлме брондауларына жеңілдік','more completed':'тағы аяқталған','stay':'тұру','stays':'тұру','to unlock':'деңгейін ашуға','You have reached the highest loyalty level. Enjoy your 12% discount.':'Сіз адалдық бағдарламасының ең жоғары деңгейіне жеттіңіз. 12% жеңілдігіңізді пайдаланыңыз.','completed stays':'аяқталған тұру','next level:':'келесі деңгей:','maximum level achieved':'ең жоғары деңгейге жеттіңіз','Loyalty':'Адалдық бағдарламасы','None':'Деңгей жоқ','Silver':'Күміс','Gold':'Алтын','Platinum':'Платина',
+      'Guests':'Қонақтар','Guest count':'Қонақ саны','Number of guests':'Қонақ саны','Search panel':'ІЗДЕУ ПАНЕЛІ','Staff area':'Қызметкерлер бөлімі','Reservations':'Брондаулар','Calendar':'Күнтізбе','Floor map':'Қабат жоспары','Housekeeping':'Бөлме тазалығы','Check-in':'Қонақты тіркеу','Maintenance':'Техникалық қызмет','Reviews':'Пікірлер','Email outbox':'Жіберілген хаттар','Dashboard':'Басқару тақтасы','Prices':'Бағалар','Guest reviews':'Қонақтардың пікірлері','Review your stay':'Тұруды бағалаңыз','Submit review':'Пікір жіберу','Loading loyalty statistics...':'Адалдық бағдарламасының статистикасы жүктелуде...','Loyalty membership':'Адалдық бағдарламасына қатысу','Guests':'Қонақтар','Total guest accounts:':'Қонақ аккаунттарының жалпы саны:','Maintenance tickets':'Техникалық қызмет өтінімдері','Room number':'Бөлме нөмірі','Reason':'Себеп','Start':'Басталуы','Expected end':'Күтілетін аяқталуы','Update':'Жаңарту','Low ratings (1–2 stars):':'Төмен бағалар (1–2 жұлдыз):','Needs attention':'Назар аудару қажет','No reviews yet.':'Әзірге пікір жоқ.',
+      'Search':'Іздеу','Name, email, room or number':'Аты, email, бөлме немесе брондау нөмірі','Check-in from':'Кіру күні, бастап','Check-in to':'Кіру күні, дейін','Order':'Сұрыптау','Latest check-in first':'Алдымен ең жақын кіру күні','Earliest check-in first':'Алдымен ең ерте кіру күні','Rows per page':'Беттегі жол саны','Download CSV':'CSV жүктеу','Loading reservations...':'Брондаулар жүктелуде...','No reservations match this filter.':'Бұл сүзгіге сәйкес брондау жоқ.','Every booking creates a confirmation email. It is sent right after the booking is saved. Without an SMTP server, sending is simulated and the text is kept here.':'Әр брондау үшін растау хаты жасалады. Ол брондау сақталғаннан кейін бірден жіберіледі. SMTP сервері болмаса, жіберу имитацияланып, хат мәтіні осында сақталады.',
+      'Thank you for your review.':'Пікіріңізге рақмет.','Please fill in only one field. The search works with QR code OR reservation number OR email.':'Тек бір өрісті толтырыңыз. Іздеу QR кодЫ НЕМЕСЕ брондау нөмірі НЕМЕСЕ электрондық пошта арқылы орындалады.','Enter a QR pass code, reservation number, or email.':'QR рұқсат коды, брондау нөмірі немесе электрондық поштаны енгізіңіз.','Your session ended. Log in again.':'Сеанс аяқталды. Қайта кіріңіз.','Interface language changed':'Интерфейс тілі өзгертілді','You are logged out.':'Сіз аккаунттан шықтыңыз.','Sign in':'Кіру','Create account':'Аккаунт жасау','Password':'Құпиясөз','Current password':'Ағымдағы құпиясөз','New password':'Жаңа құпиясөз','Confirm password':'Құпиясөзді растау','Staff log in':'Қызметкерлерге кіру','System interface':'Жүйелік интерфейс','Visual style':'Көрініс стилі','Language':'Тіл','Number of guests':'Қонақ саны','Search panel':'ІЗДЕУ ПАНЕЛІ','Close':'Жабу','Ocean view · Wi-Fi · Climate control':'Мұхит көрінісі · Wi-Fi · Климат-бақылау','OCEAN VIEW FROM 25,000 KZT':'МҰХИТ КӨРІНІСІ 25 000 ₸ БАСТАП','VICE CITY · THE SUN NEVER SETS':'VICE CITY · КҮН ЕШҚАШАН БАТПАЙДЫ','SYSTEM NOTICE: ROOMS AVAILABLE':'ЖҮЙЕЛІК ХАБАРЛАМА: БОС БӨЛМЕЛЕР БАР','THE CITY NEVER SLEEPS. NEITHER DO YOU.':'ҚАЛА ҰЙЫҚТАМАЙДЫ. СІЗ ДЕ ҰЙЫҚТАМАҢЫЗ.','SYSTEM NOTICE: ALL SERVICES ARE UNDER CORPORATE OVERSIGHT · SECURITY CLEARANCE: HIGH · NIGHT CITY, 2077':'ЖҮЙЕ ЖАЗБАСЫ: БАРЛЫҚ ҚЫЗМЕТТЕР КОРПОРАТИВТІК БАҚЫЛАУДА · ҚАУІПСІЗДІК ДЕҢГЕЙІ: ЖОҒАРЫ · NIGHT CITY, 2077','WHERE THE SUN NEVER SETS.':'ТАМ, ГДЕ КҮН ЕШҚАШАН БАТПАЙДЫ.','THE MARISOL · VICE CITY · ALL RIGHTS RESERVED · VACATION AT YOUR OWN RISK':'THE MARISOL · VICE CITY · БАРЛЫҚ ҚҰҚЫҚТАР ҚОРҒАЛҒАН · ЖАУАПКЕРШІЛІКПЕН ДЕМАЛЫҢЫЗ','Rooms':'БӨЛМЕЛЕР','My reservations':'МЕНІҢ БРОНДАУЛАРЫМ','GTA VI Style':'GTA VI СТИЛІ','Default':'Әдепкі','Accessible':'Қолжетімді','After Dark':'ТҮНГІ РЕЖИМ','AFTER DARK':'ТҮНГІ РЕЖИМ','ON':'ҚОСУЛЫ','OFF':'ӨШІРУЛІ','VICE CITY HOTEL NETWORK':'VICE CITY ҚОНАҚ ҮЙ ЖЕЛІСІ','PLATINUM · 12% OFF':'ПЛАТИНА · 12% ЖЕҢІЛДІК',
+      'LIVE':'ЖЕЛІДЕ',
+      'PLATINUM · 12% OFF':'ПЛАТИНА · 12% ЖЕҢІЛДІК',
+      'Official Site':'Ресми сайт',
+      'Free Cancellation':'Тегін бас тарту',
+      'Secure booking':'Қауіпсіз брондау',
+      'Accessibility':'Қолжетімділік',
+      'Privacy policy':'Құпиялылық саясаты',
+      'Terms and conditions':'Пайдалану шарттары',
+      'Contact':'Байланыс',
+      'Search panel':'ІЗДЕУ ПАНЕЛІ',
+      'Number of guests':'Қонақ саны',
+      'Guests':'Қонақтар',
+      'Select room':'Бөлмені таңдау',
+      'Select Room':'Бөлмені таңдау',
+      'Choose room':'Бөлмені таңдау',
+      'Guest details':'Қонақ туралы мәліметтер',
+      'Payment':'Төлем',
+      'Confirmation':'Растау',
+      'Continue':'Жалғастыру',
+      'Complete booking':'Брондауды аяқтау',
+      'Booking reference':'Брондау нөмірі',
+      'Booking confirmed':'Брондау расталды',
+      'No rooms found':'Бөлмелер табылмады',
+      'Try another date range.':'Басқа күндерді таңдап көріңіз.',
+      'Availability':'Бос орындар',
+      'Available':'Қолжетімді',
+      'Unavailable':'Қолжетімсіз',
+      'Room capacity':'Бөлме сыйымдылығы',
+      'Your account':'Аккаунтыңыз',
+      'Profile updated.':'Профиль жаңартылды.',
+      'Password changed.':'Құпиясөз өзгертілді.',
+      'After Dark enabled':'Түнгі режим қосылды',
+      'After Dark disabled':'Түнгі режим өшірілді',
+      'Color vision accessibility':'Түсті ажырату мүмкіндігі шектеулі адамдарға арналған қолжетімділік',
+      'Official & Premium':'Ресми және премиум',
+      'Daltonism-safe':'Дальтонизмі бар адамдарға арналған',
+      'English':'Ағылшын тілі',
+      'Kazakh':'Қазақ тілі',
+      'Russian':'Орыс тілі',
+      'No account yet?':'Аккаунтыңыз жоқ па?',
+      'Forgot password?':'Құпиясөзді ұмыттыңыз ба?',
+      'Email address':'Электрондық пошта мекенжайы',
+      'Confirm booking':'Брондауды растау',
+      'Manage booking':'Брондауды басқару',
+      'Room details':'Бөлме туралы ақпарат',
+      'Amenities':'Қолайлылықтар',
+      'per night':'түн үшін',
+      'Room selected':'Бөлме таңдалды',
+      'Booking history':'Брондау тарихы',
+      'Front desk account':'Қабылдау бөлімінің аккаунты',
+      'Manager account':'Менеджер аккаунты',
+      'Guest account':'Қонақ аккаунты',
+      'NEON OASIS — NIGHT CITY HOTEL NETWORK':'NEON OASIS — NIGHT CITY ҚОНАҚҮЙЛЕР ЖЕЛІСІ',
+      'THE MARISOL — VICE CITY HOTEL':'THE MARISOL — VICE CITY ҚОНАҚҮЙІ',
+      'NEON OASIS — OFFICIAL HOTEL BOOKING':'NEON OASIS — ҚОНАҚҮЙДІҢ РЕСМИ БРОНДАУЫ',
+      'NEON OASIS — ACCESSIBLE HOTEL BOOKING':'NEON OASIS — ҚОЛЖЕТІМДІ ҚОНАҚҮЙ БРОНДАУЫ',
+      'Skip to content':'Мазмұнға өту',
+      'Main':'Негізгі навигация',
+      'Hotel announcements':'Қонақүй хабарландырулары',
+      'VICE CITY · MIAMI COASTAL CLUB':'VICE CITY · MIAMI ЖАҒАЛАУ КЛУБЫ',
+      'VICE CITY IS CALLING':'VICE CITY ШАҚЫРАДЫ',
+      'WHERE THE SUN NEVER SETS.':'КҮН ЕШҚАШАН БАТПАЙТЫН ЖЕР.',
+      'BOOK A ROOM':'БӨЛМЕ БРОНДАУ',
+      'Sign in or create a guest account first. Then pick check-in and check-out dates on the Rooms page and press Search rooms. Choose a room and confirm the payment method. The reservation is saved to your account, and the confirmation shows a reservation number and a QR check-in pass.':'Алдымен жүйеге кіріңіз немесе қонақ аккаунтын жасаңыз. Содан кейін «Бөлмелер» бетінде кіру және шығу күндерін таңдап, «Бөлмелерді іздеу» түймесін басыңыз. Бөлмені таңдап, төлем әдісін растаңыз. Брондау аккаунтыңызда сақталады, ал растау бетінде брондау нөмірі мен QR тіркеу рұқсаты көрсетіледі.',
+      'After you search, the Flexible dates table appears under the results. It shows the same number of nights starting a few days earlier or later, the price per room type and how many rooms are free. Press Use these dates on a row to search again.':'Іздеуден кейін нәтижелердің астында «Икемді күндер» кестесі пайда болады. Онда бірнеше күн ерте немесе кеш басталатын дәл сондай түн саны, бөлме түрі бойынша баға және бос бөлмелер саны көрсетіледі. Қайта іздеу үшін «Осы күндерді қолдану» түймесін басыңыз.',
+      'Open My reservations after signing in. Your bookings are saved to your guest account automatically, You can view each reservation and cancel eligible stays. The automatic cancellation refund is based on days remaining: 4 or more days = 100%, 2–3 days = 95%, 1 day = 90%, check-in day = 80%, and after check-in = 0%. The exact estimated amount is shown before you confirm cancellation.':'Жүйеге кіргеннен кейін «Менің брондауларым» бөлімін ашыңыз. Брондауларыңыз аккаунтыңызда автоматты түрде сақталады. Әр брондауды көріп, рұқсат етілген жағдайда одан бас тарта аласыз. Қайтарым қалған күндерге байланысты: 4 немесе одан көп күн — 100%, 2–3 күн — 95%, 1 күн — 90%, кіру күні — 80%, тіркелгеннен кейін — 0%. Нақты сома бас тартуды растаудан бұрын көрсетіледі.',
+      'Your QR check-in pass is shown on the booking confirmation and under My reservations while the reservation is confirmed. At the front desk, show the QR code or read out the pass code that starts with HB and includes your reservation number.':'QR тіркеу рұқсаты брондау растамасында және брондау расталған кезде «Менің брондауларым» бөлімінде көрсетіледі. Қабылдау бөлімінде QR кодын көрсетіңіз немесе HB әріптерінен басталып, брондау нөмірін қамтитын рұқсат кодын айтыңыз.',
+      'Check-in starts at 14:00 on the arrival date. Guests leave by 12:00 on the departure date, and the room then goes to housekeeping.':'Тіркелу келу күні сағат 14:00-де басталады. Қонақтар шығу күні сағат 12:00-ге дейін кетеді, содан кейін бөлме тазалық бөліміне беріледі.',
+      'You choose Card, Cash or Transfer when booking. Payment is simulated in this prototype and no card number is asked for or stored.':'Брондау кезінде карта, қолма-қол ақша немесе аударым әдісін таңдауға болады. Бұл прототипте төлем имитацияланады, банк картасының нөмірі сұралмайды және сақталмайды.',
+      'A confirmation email is sent right after booking. In this prototype it is written to the Email outbox unless SMTP is configured. Front desk staff can send it again from the Email outbox tab.':'Растау хаты брондаудан кейін бірден жасалады. SMTP бапталмаса, хат «Жіберілген хаттар» бөліміне жазылады. Қабылдау қызметкерлері оны осы бөлімнен қайта жібере алады.',
+      'Staff sign in on the Staff page with their work email and password. After signing in you can change your own password from Account in the top bar.':'Қызметкерлер «Қызметкерлер» бетінде жұмыс электрондық поштасы мен құпиясөзін пайдаланып кіреді. Кіргеннен кейін жоғарғы панельдегі «Аккаунт» бөлімінен құпиясөзін өзгерте алады.',
+      'I am a small helper built into this page. I know where things are for guests, front desk and manager, I can open the right page, and I can answer a few live questions such as which rooms are dirty or free tonight. I do not use the internet.':'Мен осы бетке енгізілген көмекшімін. Қонақтарға, қабылдау бөліміне және менеджерге арналған бөлімдердің қайда екенін білемін, қажетті бетті аша аламын және қай бөлмелер лас немесе бүгін түнге бос екені сияқты сұрақтарға жауап бере аламын. Интернетті пайдаланбаймын.',
+      'The end date must not be before the start date.':'Аяқталу күні басталу күнінен бұрын болмауы керек.',
+      'Ask guide':'Көмекшіден сұрау',
+      'Ask where something is...':'Қажетті бөлімнің қайда екенін сұраңыз...',
+      'Your question':'Сұрағыңыз',
+      'Close guide':'Көмекшіні жабу',
+      'Navigation guide':'Навигация көмекшісі',
+      'Guide':'Көмекші',
+      'Ask':'Сұрау',
+      'Also related: ':'Қатысты бөлімдер: ',
+      'Type a question, for example: how do I check in a guest?':'Сұрақ енгізіңіз, мысалы: қонақты қалай тіркеуге болады?',
+      'Hello! Ask me where something is or how to do it, for example: ':'Сәлем! Қажетті бөлімді қайдан табуға немесе оны қалай қолдануға болатынын сұраңыз, мысалы: ',
+      'You are welcome!':'Оқасы жоқ!',
+      'Something went wrong. Please try again.':'Қате орын алды. Қайталап көріңіз.',
+      'Nothing to clean.':'Тазалайтын бөлме жоқ.',
+      'Book a room':'Бөлмені брондау',
+      'Cancel my booking':'Брондауымнан бас тарту',
+      'Check in a guest':'Қонақты тіркеу',
+      'Dashboard date filter':'Басқару тақтасының күн сүзгісі',
+      'Open the floor map':'Қабат жоспарын ашу',
+      'Resend an email':'Хатты қайта жіберу',
+      'Show cheaper dates':'Арзанырақ күндерді көрсету',
+      'Where is my QR pass?':'Менің QR рұқсатым қайда?',
+      'Which rooms are dirty?':'Қандай бөлмелер лас?',
+      'Use the date filter to look at any period.':'Кез келген кезеңді көру үшін күн сүзгісін пайдаланыңыз.',
+      'Pick your dates and press Search rooms. Under the results, Flexible dates compares nearby days.':'Күндерді таңдап, «Бөлмелерді іздеу» түймесін басыңыз. Нәтижелердің астындағы «Икемді күндер» бөлімі жақын күндерді салыстырады.',
+      'Sign in to view your reservation history, QR check-in passes and eligible cancellations.':'Брондау тарихын, QR тіркеу рұқсаттарын және бас тартуға болатын брондауларды көру үшін жүйеге кіріңіз.',
+      'Log in, then use the tabs: reservations, floor map, housekeeping, check-in.':'Жүйеге кіріп, брондаулар, қабат жоспары, тазалық және қонақты тіркеу қойындыларын пайдаланыңыз.',
+      'Filter, sort, change dates or cancel. Managers can also download CSV.':'Сүзгілеп, сұрыптап, күндерді өзгертіңіз немесе брондаудан бас тартыңыз. Менеджерлер CSV файлын да жүктей алады.',
+      'Booked nights for every room over a range of dates.':'Күндер аралығындағы әр бөлменің брондалған түндері.',
+      'Click a room tile for its guest and quick actions. Pick any date.':'Қонақ пен жылдам әрекеттерді көру үшін бөлме тақтасын басыңыз. Кез келген күнді таңдаңыз.',
+      'Clean the priority rooms first, then inspect them.':'Алдымен басым бөлмелерді тазалап, кейін тексеріңіз.',
+      'Scan or type the pass code, then press Check in.':'Рұқсат кодын сканерлеңіз немесе енгізіп, «Тіркеу» түймесін басыңыз.',
+      'Resend a confirmation email with one click.':'Растау хатын бір рет басып қайта жіберіңіз.',
+      'See how many guests belong to each tier.':'Әр деңгейдегі қонақтар санын көріңіз.',
+      'Create and update room maintenance tickets.':'Бөлмелерге техникалық қызмет көрсету өтінімдерін жасаңыз және жаңартыңыз.',
+      'Read guest reviews and follow up on low ratings.':'Қонақ пікірлерін оқып, төмен бағаларға назар аударыңыз.',
+      'Read the suggestions, apply one or type a new price.':'Ұсыныстарды қарап, біреуін қолданыңыз немесе жаңа бағаны енгізіңіз.',
+      'The price is per night and depends on the room type. Search your dates on the Rooms page to see the exact total.':'Баға бір түнге есептеледі және бөлме түріне байланысты. Нақты соманы көру үшін «Бөлмелер» бетінен күндерді іздеңіз.',
+      'Search the Rooms page for tonight to see what is free.':'Бүгін түнге бос нөмірлерді көру үшін «Бөлмелер» бетінен іздеңіз.',
+      'No rooms are free tonight.':'Бүгін түнге бос бөлмелер жоқ.',
+      'Free tonight: ':'Бүгін түнге бос: ',
+      'Right now: ':'Қазір: ',
+      'dirty, ':'лас, ',
+      'cleaned and waiting for inspection, ':'тазартылды және тексеруді күтуде, ',
+      'ready. ':'дайын. ',
+      'priority (guest arrives today).':'басымдықты (қонақ бүгін келеді).',
+      'First rooms: ':'Алғашқы бөлмелер: ',
+      'No change suggested today: demand looks normal for every room type.':'Бүгін өзгеріс ұсынылмайды: барлық бөлме түріне сұраныс қалыпты.',
+      'Suggestions now: ':'Қазіргі ұсыныстар: ',
+      'Only the Manager role can open that. Ask your manager, or log in with a manager account.':'Бұл бөлімді тек менеджер аша алады. Менеджеріңізге хабарласыңыз немесе менеджер аккаунтымен кіріңіз.',
+      'I did not find that. Try a few key words, for example "floor map", "cancel booking" or "check in".':'Жауап табылмады. «Қабат жоспары», «брондаудан бас тарту» немесе «қонақты тіркеу» сөздерін қолданып көріңіз.',
+      'Open Rooms':'Бөлмелерді ашу',
+      'Open My reservations':'Менің брондауларымды ашу',
+      'Open Staff':'Қызметкерлер бөлімін ашу',
+      'Open Check-in':'Қонақты тіркеуді ашу',
+      'Open Floor map':'Қабат жоспарын ашу',
+      'Open Housekeeping':'Тазалық бөлімін ашу',
+      'Open Reservations':'Брондауларды ашу',
+      'Open Calendar':'Күнтізбені ашу',
+      'Open Loyalty':'Адалдық бағдарламасын ашу',
+      'Open Maintenance':'Техникалық қызметті ашу',
+      'Open Reviews':'Пікірлерді ашу',
+      'Open Email outbox':'Жіберілген хаттарды ашу',
+      'Open Dashboard':'Басқару тақтасын ашу',
+      'Open Prices':'Бағаларды ашу',
+      'Manager':'Менеджер',
+      'Refund':'Қайтарым',
+      'Leaving':'Шығу',
+      'Arriving':'Келу',
+      'Check in':'Тіркелу',
+      'Check out':'Шығу',
+      'Occupied':'Бос емес',
+      'To clean':'Тазалау қажет',
+      'Hotel team':'Қонақүй командасы',
+      'Mark clean':'Тазартылды деп белгілеу',
+      'Next guest':'Келесі қонақ',
+      'To inspect':'Тексеру қажет',
+      'Change price':'Бағаны өзгерту',
+      'Hotel member':'Қонақүй бағдарламасының мүшесі',
+      'Previous day':'Алдыңғы күн',
+      'Report dirty':'Лас деп белгілеу',
+      'last 14 days':'соңғы 14 күн',
+      'Check-in date':'Кіру күні',
+      'Guest profile':'Қонақ профилі',
+      'Add-on revenue':'Қосымша қызметтерден түскен табыс',
+      'Extra payment':'Қосымша төлем',
+      'Mark inspected':'Тексерілді деп белгілеу',
+      'Reset password':'Құпиясөзді қалпына келтіру',
+      'Staff sections':'Қызметкерлер бөлімдері',
+      'No price change':'Баға өзгермейді',
+      'Under maintenance':'Техникалық қызмет көрсетілуде',
+      'Cancel reservation':'Брондаудан бас тарту',
+      'Clean these first.':'Алдымен бұларды тазалаңыз.',
+      'Front desk profile':'Қабылдау қызметкерінің профилі',
+      'Hotel team account':'Қонақүй қызметкерінің аккаунты',
+      'Management profile':'Басқарушы профилі',
+      'Hotel announcements':'Қонақүй хабарландырулары',
+      'Net revenue per day':'Күндік таза табыс',
+      'Ready for check-in.':'Қонақты тіркеуге дайын.',
+      'The request failed.':'Сұрауды орындау сәтсіз аяқталды.',
+      'Your contact number':'Байланыс нөміріңіз',
+      'Filter rooms by type':'Бөлмелерді түрі бойынша сүзу',
+      'Reset guest password':'Қонақ құпиясөзін қалпына келтіру',
+      'Change guest password':'Қонақ құпиясөзін өзгерту',
+      'Open loyalty progress':'Адалдық бағдарламасының прогресін ашу',
+      'Enter a price above 0.':'0-ден жоғары баға енгізіңіз.',
+      'Toggle After Dark mode':'Түнгі режимді ауыстыру',
+      'Guest password changed.':'Қонақтың құпиясөзі өзгертілді.',
+      'Occupancy in the period':'Кезең ішіндегі жүктеме',
+      'Occupancy, next 30 days':'Келесі 30 күндегі жүктеме',
+      'Net revenue by room type':'Бөлме түрлері бойынша таза табыс',
+      'Add a work contact number':'Жұмыс байланыс нөмірін қосу',
+      'Reservations by room type':'Бөлме түрлері бойынша брондаулар',
+      'Guest leaves today (12:00)':'Қонақ бүгін шығады (12:00)',
+      'Priority: guest arrives today':'Басымдық: қонақ бүгін келеді',
+      'Choose between 1 and 8 guests.':'1 мен 8 аралығында қонақ санын таңдаңыз.',
+      'The new passwords do not match.':'Жаңа құпиясөздер сәйкес келмейді.',
+      'The two new passwords are not the same.':'Екі жаңа құпиясөз бірдей емес.',
+      'Enter the recovery code from your email.':'Электрондық поштаңызға келген қалпына келтіру кодын енгізіңіз.',
+      'Password reset. Sign in with your new password.':'Құпиясөз қалпына келтірілді. Жаңа құпиясөзбен кіріңіз.',
+      'The end date must not be before the start date.':'Аяқталу күні басталу күнінен бұрын болмауы керек.',
+      'Your permissions are based on your assigned hotel role.':'Рұқсаттарыңыз қонақүйдегі тағайындалған рөліңізге байланысты.',
+      'Cannot reach the server. Check the connection and try again.':'Серверге қосылу мүмкін емес. Байланысты тексеріп, қайта көріңіз.',
+      'Could not open the camera. Allow camera access and use localhost or HTTPS.':'Камераны ашу мүмкін болмады. Камераға рұқсат беріп, localhost немесе HTTPS қолданыңыз.',
+      'The confirmation email could not be sent. The front desk can send it again.':'Растау хатын жіберу мүмкін болмады. Қабылдау бөлімі оны қайта жібере алады.',
+      'QR scanner library did not load. Check your internet connection, then refresh.':'QR сканер кітапханасы жүктелмеді. Интернет байланысын тексеріп, бетті жаңартыңыз.',
+      'Official booking service · Secure reservations':'Ресми брондау қызметі · Қауіпсіз брондау',
+      'Clear information. Predictable navigation. Equal access to every booking function.':'Түсінікті ақпарат. Болжамды навигация. Брондаудың барлық функциясына тең қолжетімділік.',
+      '© 2026 NEON OASIS HOTEL. All rights reserved.':'© 2026 NEON OASIS HOTEL. Барлық құқықтар қорғалған.',
+      'Privacy & security':'Құпиялылық және қауіпсіздік',
+      'Accessibility statement':'Қолжетімділік туралы мәлімдеме',
+      'ACCESSIBLE HOTEL RESERVATIONS':'ҚОЛЖЕТІМДІ ҚОНАҚҮЙ БРОНДАУЫ',
+      'OFFICIAL HOTEL RESERVATIONS':'ҚОНАҚҮЙДІҢ РЕСМИ БРОНДАУЫ',
     }
   };
-  const lang = () => localStorage.getItem('hotel-lang') || 'en';
-  const translate = value => D[lang()]?.[value] || value;
-  window.hotelTranslate = translate;
-  const originals = new WeakMap(), tracked = new Set();
-  const paint = n => { if(!originals.has(n)){originals.set(n,n.nodeValue);tracked.add(n);} const original=originals.get(n); const v=original.trim(); n.nodeValue=v ? original.replace(v,translate(v)) : original; };
-  const apply = root => {
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-    const nodes=[]; while(walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(paint);
-  };
-  window.hotelApplyTranslations = () => tracked.forEach(n => { if(n.isConnected) paint(n); });
-  const start = () => {
-    document.documentElement.lang=lang();
+
+  // Supplemental translations for the social-profile account page, shared footer copy,
+  // and status messages introduced by the four-theme interface.
+  Object.assign(D.ru, {
+    'After Dark':'Ночной режим','AFTER DARK':'НОЧНОЙ РЕЖИМ','My bookings':'Мои бронирования',
+    'Reserve your stay':'Забронируйте проживание',
+    'NIGHT CITY HOTEL NETWORK':'СЕТЬ ОТЕЛЕЙ NIGHT CITY',
+    'Room search results':'Результаты поиска номеров',
+    'VICE CITY · MIAMI COASTAL CLUB':'VICE CITY · ПРИБРЕЖНЫЙ КЛУБ МАЙАМИ',
+    'Choose a room':'Выбрать номер',
+    'NEON OASIS // NIGHT CITY CORPORATE HOSPITALITY':'NEON OASIS // КОРПОРАТИВНОЕ ГОСТЕПРИИМСТВО NIGHT CITY',
+    'THE MARISOL / VICE CITY BEACH CLUB / EST. 1986':'THE MARISOL / ПЛЯЖНЫЙ КЛУБ VICE CITY / С 1986 ГОДА',
+    'OFFICIAL HOTEL SITE · SECURE BOOKING · PLATINUM MEMBERS SAVE 12%':'ОФИЦИАЛЬНЫЙ САЙТ ОТЕЛЯ · БЕЗОПАСНОЕ БРОНИРОВАНИЕ · УЧАСТНИКИ PLATINUM ЭКОНОМЯТ 12%',
+    'VACATION AT YOUR OWN RISK':'ОТДЫХАЙТЕ НА СВОЙ СТРАХ И РИСК',
+    'SECTOR 4 · SECURE CHECK-IN':'СЕКТОР 4 · БЕЗОПАСНОЕ ЗАСЕЛЕНИЕ',
+    'After Dark enabled':'Ночной режим включён','After Dark disabled':'Ночной режим выключен',
+    'Account updated.':'Данные аккаунта обновлены.','Profile updated.':'Профиль обновлён.',
+    'Loading your profile...':'Загружаем ваш профиль...','Guest profile':'Профиль гостя',
+    'Management profile':'Профиль руководителя','Front desk profile':'Профиль сотрудника стойки регистрации',
+    'Hotel team account':'Аккаунт сотрудника отеля','Completed stays':'Завершённые проживания',
+    'Loyalty status':'Статус программы лояльности','Member discount':'Скидка участника',
+    'Staff ID':'ID сотрудника','Access level':'Уровень доступа','Active':'Активен',
+    'PERSONAL SPACE':'ЛИЧНЫЙ ПРОФИЛЬ','ACCOUNT ACTIVE':'АККАУНТ АКТИВЕН','YOUR DETAILS':'ВАШИ ДАННЫЕ',
+    'Profile information':'Информация профиля','Keep your contact information up to date.':'Поддерживайте контактные данные в актуальном состоянии.',
+    'Demo password detected.':'Обнаружен демонстрационный пароль.','Change it before using this account outside a demonstration.':'Измените его перед использованием аккаунта вне демонстрационной среды.',
+    'Phone number':'Номер телефона','Account role':'Роль аккаунта',
+    'Your email is a protected sign-in identifier. Contact the hotel administrator if it needs to be changed.':'Ваш адрес электронной почты защищён и используется для входа. Чтобы изменить его, обратитесь к администратору отеля.',
+    'Member since':'Участник с','Save profile':'Сохранить профиль','PROTECTION':'ЗАЩИТА','Account security':'Безопасность аккаунта',
+    'Keep your account protected with a strong, unique password. Your role and email are not editable from this page.':'Защитите аккаунт надёжным уникальным паролем. На этой странице нельзя изменить роль и адрес электронной почты.',
+    'QUICK ACCESS':'БЫСТРЫЙ ДОСТУП','Shortcuts':'Быстрые ссылки','View stays and booking details':'Просмотр проживания и данных бронирования',
+    'Find a room':'Найти номер','Plan your next stay':'Запланировать следующую поездку','Open the front desk workspace':'Открыть рабочее пространство стойки регистрации',
+    'Manager dashboard':'Панель менеджера','View hotel performance':'Просмотр показателей отеля','Open room status board':'Открыть доску статусов номеров',
+    'Your profile':'Ваш профиль','Sign in to open your personal profile, update your contact details and manage your account security.':'Войдите, чтобы открыть личный профиль, обновить контактные данные и настроить безопасность аккаунта.',
+    'Guest sign in / Register':'Вход / регистрация гостя','Staff sign in':'Вход для персонала',
+    'Hotel member':'Участник отеля','Hotel team':'Команда отеля','Your contact number':'Ваш контактный номер',
+    'Add a work contact number':'Добавить рабочий контактный номер','Account updated.':'Данные аккаунта обновлены.',
+    'Official & Premium':'Официальный и премиальный','Daltonism-safe':'Для пользователей с дальтонизмом',
+    'Official booking service · Secure reservations':'Официальная служба бронирования · Безопасное бронирование',
+    'Clear information. Predictable navigation. Equal access to every booking function.':'Понятная информация. Предсказуемая навигация. Равный доступ ко всем функциям бронирования.',
+    'NEON OASIS — OFFICIAL HOTEL BOOKING':'NEON OASIS — ОФИЦИАЛЬНОЕ БРОНИРОВАНИЕ ОТЕЛЯ',
+    'NEON OASIS — ACCESSIBLE HOTEL BOOKING':'NEON OASIS — ДОСТУПНОЕ БРОНИРОВАНИЕ ОТЕЛЯ'
+  });
+  Object.assign(D.kz, {
+    'After Dark':'Түнгі режим','AFTER DARK':'ТҮНГІ РЕЖИМ','My bookings':'Менің брондауларым',
+    'Reserve your stay':'Тұруыңызды брондаңыз',
+    'NIGHT CITY HOTEL NETWORK':'NIGHT CITY ҚОНАҚҮЙ ЖЕЛІСІ',
+    'Room search results':'Бөлмелерді іздеу нәтижелері',
+    'VICE CITY · MIAMI COASTAL CLUB':'VICE CITY · MIAMI ЖАҒАЛАУ КЛУБЫ',
+    'Choose a room':'Бөлмені таңдау',
+    'NEON OASIS // NIGHT CITY CORPORATE HOSPITALITY':'NEON OASIS // NIGHT CITY КОРПОРАТИВТІ ҚОНАҚЖАЙЛЫҒЫ',
+    'THE MARISOL / VICE CITY BEACH CLUB / EST. 1986':'THE MARISOL / VICE CITY ЖАҒАЖАЙ КЛУБЫ / 1986 ЖЫЛДАН БЕРІ',
+    'OFFICIAL HOTEL SITE · SECURE BOOKING · PLATINUM MEMBERS SAVE 12%':'ҚОНАҚҮЙДІҢ РЕСМИ САЙТЫ · ҚАУІПСІЗ БРОНДАУ · PLATINUM МҮШЕЛЕРІ 12% ҮНЕМДЕЙДІ',
+    'VACATION AT YOUR OWN RISK':'ДЕМАЛЫСҚА ӨЗ ТӘУЕКЕЛІҢІЗБЕН КЕЛІҢІЗ',
+    'SECTOR 4 · SECURE CHECK-IN':'4-СЕКТОР · ҚАУІПСІЗ ТІРКЕЛУ',
+    'After Dark enabled':'Түнгі режим қосылды','After Dark disabled':'Түнгі режим өшірілді',
+    'Account updated.':'Аккаунт деректері жаңартылды.','Profile updated.':'Профиль жаңартылды.',
+    'Loading your profile...':'Профиліңіз жүктелуде...','Guest profile':'Қонақ профилі',
+    'Management profile':'Басқарушы профилі','Front desk profile':'Қабылдау қызметкерінің профилі',
+    'Hotel team account':'Қонақүй қызметкерінің аккаунты','Completed stays':'Аяқталған тұрулар',
+    'Loyalty status':'Адалдық бағдарламасының мәртебесі','Member discount':'Мүше жеңілдігі',
+    'Staff ID':'Қызметкер ID','Access level':'Қолжетімділік деңгейі','Active':'Белсенді',
+    'PERSONAL SPACE':'ЖЕКЕ ПРОФИЛЬ','ACCOUNT ACTIVE':'АККАУНТ БЕЛСЕНДІ','YOUR DETAILS':'СІЗДІҢ ДЕРЕКТЕРІҢІЗ',
+    'Profile information':'Профиль ақпараты','Keep your contact information up to date.':'Байланыс ақпаратыңызды әрдайым жаңартып отырыңыз.',
+    'Demo password detected.':'Демо құпиясөзі анықталды.','Change it before using this account outside a demonstration.':'Бұл аккаунтты демо-нұсқадан тыс қолданбас бұрын құпиясөзді өзгертіңіз.',
+    'Phone number':'Телефон нөмірі','Account role':'Аккаунт рөлі',
+    'Your email is a protected sign-in identifier. Contact the hotel administrator if it needs to be changed.':'Электрондық поштаңыз — қорғалған кіру идентификаторы. Оны өзгерту қажет болса, қонақүй әкімшісіне хабарласыңыз.',
+    'Member since':'Мүше болған күні','Save profile':'Профильді сақтау','PROTECTION':'ҚОРҒАНЫС','Account security':'Аккаунт қауіпсіздігі',
+    'Keep your account protected with a strong, unique password. Your role and email are not editable from this page.':'Аккаунтыңызды күрделі әрі бірегей құпиясөзбен қорғаңыз. Бұл бетте рөл мен электрондық поштаны өзгерту мүмкін емес.',
+    'QUICK ACCESS':'ЖЫЛДАМ ҚОЛЖЕТІМДІЛІК','Shortcuts':'Жылдам сілтемелер','View stays and booking details':'Тұру және брондау мәліметтерін көру',
+    'Find a room':'Бөлме табу','Plan your next stay':'Келесі сапарыңызды жоспарлау','Open the front desk workspace':'Қабылдау бөлімінің жұмыс кеңістігін ашу',
+    'Manager dashboard':'Менеджердің басқару тақтасы','View hotel performance':'Қонақүй көрсеткіштерін көру','Open room status board':'Бөлме мәртебесі тақтасын ашу',
+    'Your profile':'Сіздің профиліңіз','Sign in to open your personal profile, update your contact details and manage your account security.':'Жеке профиліңізді ашу, байланыс деректерін жаңарту және аккаунт қауіпсіздігін басқару үшін жүйеге кіріңіз.',
+    'Guest sign in / Register':'Қонақ ретінде кіру / тіркелу','Staff sign in':'Қызметкерлерге кіру',
+    'Hotel member':'Қонақүй мүшесі','Hotel team':'Қонақүй командасы','Your contact number':'Байланыс нөміріңіз',
+    'Add a work contact number':'Жұмыс байланыс нөмірін қосу',
+    'Official & Premium':'Ресми және премиум','Daltonism-safe':'Дальтонизмі бар адамдарға арналған',
+    'Official booking service · Secure reservations':'Ресми брондау қызметі · Қауіпсіз брондау',
+    'Clear information. Predictable navigation. Equal access to every booking function.':'Түсінікті ақпарат. Болжамды навигация. Брондаудың барлық функциясына тең қолжетімділік.',
+    'NEON OASIS — OFFICIAL HOTEL BOOKING':'NEON OASIS — ҚОНАҚҮЙДІҢ РЕСМИ БРОНДАУЫ',
+    'NEON OASIS — ACCESSIBLE HOTEL BOOKING':'NEON OASIS — ҚОЛЖЕТІМДІ ҚОНАҚҮЙ БРОНДАУЫ'
+  });
+
+  const supported = new Set(['en', 'ru', 'kz']);
+  const textOriginals = new WeakMap();
+  const elementOriginals = new WeakMap();
+  const ATTRS = ['placeholder', 'title', 'aria-label', 'alt'];
+  const originalDocumentTitle = document.title;
+  function paintDocumentTitle(language = currentLanguage()) { document.title = translateString(originalDocumentTitle, language); }
+
+  function currentLanguage() {
+    const saved = localStorage.getItem('hotel-lang') || document.documentElement.dataset.defaultLang || 'kz';
+    return supported.has(saved) ? saved : 'kz';
+  }
+
+  function translateString(input, language = currentLanguage()) {
+    if (language === 'en' || !D[language] || !input) return input;
+    const dict = D[language];
+    const trimmed = input.trim();
+    if (Object.prototype.hasOwnProperty.call(dict, trimmed)) {
+      return input.replace(trimmed, dict[trimmed]);
+    }
+    let output = input;
+    const entries = Object.entries(dict).sort((a, b) => b[0].length - a[0].length);
+    for (const [source, target] of entries) {
+      // Replace complete phrases/words only; keep surrounding punctuation and spacing.
+      const escaped = source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const pattern = new RegExp('(^|[^A-Za-z0-9])(' + escaped + ')(?=$|[^A-Za-z0-9])', 'g');
+      output = output.replace(pattern, (_match, left) => left + target);
+    }
+    return output;
+  }
+
+  function paintText(node) {
+    if (!textOriginals.has(node)) {
+      textOriginals.set(node, node.nodeValue);
+    }
+    node.nodeValue = translateString(textOriginals.get(node));
+  }
+
+  function paintElement(element) {
+    if (!element || element.nodeType !== Node.ELEMENT_NODE) return;
+    if (!elementOriginals.has(element)) {
+      const values = {};
+      for (const attr of ATTRS) if (element.hasAttribute(attr)) values[attr] = element.getAttribute(attr);
+      elementOriginals.set(element, values);
+    }
+    const values = elementOriginals.get(element);
+    for (const attr of ATTRS) {
+      if (Object.prototype.hasOwnProperty.call(values, attr)) {
+        element.setAttribute(attr, translateString(values[attr]));
+      }
+    }
+  }
+
+  function apply(root = document.body) {
+    if (!root) return;
+    if (root.nodeType === Node.TEXT_NODE) { paintText(root); return; }
+    if (root.nodeType === Node.ELEMENT_NODE) paintElement(root);
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode(node) {
+        const parent = node.parentElement;
+        if (!parent || parent.closest('script,style,noscript,textarea,[data-no-translate]')) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    });
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(paintText);
+    if (root.querySelectorAll) root.querySelectorAll('*').forEach(paintElement);
+  }
+
+  function setLanguage(language) {
+    const next = supported.has(language) ? language : 'en';
+    localStorage.setItem('hotel-lang', next);
+    document.documentElement.lang = next === 'kz' ? 'kk' : next;
+    paintDocumentTitle(next);
     apply(document.body);
-    new MutationObserver(records => records.forEach(r => r.addedNodes.forEach(n => { if(n.nodeType===Node.TEXT_NODE)paint(n);else if(n.nodeType===Node.ELEMENT_NODE)apply(n); }))).observe(document.body,{childList:true,subtree:true});
-  };
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start,{once:true}); else start();
+    if (typeof window.hotelOnLanguageChange === 'function') window.hotelOnLanguageChange();
+    return next;
+  }
+
+  window.hotelTranslate = value => translateString(String(value == null ? '' : value));
+  window.hotelApplyTranslations = () => apply(document.body);
+  window.hotelSetLanguage = setLanguage;
+  window.hotelCurrentLanguage = currentLanguage;
+
+  function start() {
+    document.documentElement.lang = currentLanguage() === 'kz' ? 'kk' : currentLanguage();
+    paintDocumentTitle();
+    // Observe first so content rendered immediately by app.js is translated too.
+    const observer = new MutationObserver(records => {
+      for (const record of records) {
+        for (const node of record.addedNodes) {
+          if (node.nodeType === Node.TEXT_NODE) paintText(node);
+          else if (node.nodeType === Node.ELEMENT_NODE) apply(node);
+        }
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    apply(document.body);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
+  else start();
 })();

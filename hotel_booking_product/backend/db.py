@@ -3,6 +3,7 @@ import math
 import os
 import random
 import re
+import secrets
 import smtplib
 import sqlite3
 from datetime import date, datetime, timedelta
@@ -68,6 +69,7 @@ def init_db(path=None, reset=False, demo_data=True, today=None, records=None):
         conn.execute("PRAGMA journal_mode = WAL")
         with open(SCHEMA, encoding="utf-8") as f:
             conn.executescript(f.read())
+        ensure_guest_auth_schema(conn)
         import features
         features.ensure_columns(conn)
         import enhancements
@@ -78,22 +80,125 @@ def init_db(path=None, reset=False, demo_data=True, today=None, records=None):
                          (name, role, email, salt, digest))
         if demo_data:
             seed_demo_data(conn, today or date.today(), records)
+            seed_loyalty_demo_accounts(conn)
         features.seed_housekeeping(conn, today or date.today())
     finally:
         conn.close()
     return True
 
 
+def harden_production_accounts(conn):
+    """Remove known demo customer logins and rotate still-default seeded staff passwords.
+
+    Existing databases may predate APP_ENV=production. This makes switching an
+    existing demo installation to production safer without overwriting staff
+    passwords that have already been changed through the Account page.
+    """
+    defaults = {
+        "frontdesk@hotel.example": ("FrontDesk#2026", os.environ.get("FRONTDESK_PASSWORD", "")),
+        "manager@hotel.example": ("Manager#2026", os.environ.get("MANAGER_PASSWORD", "")),
+    }
+    for email, (demo_password, configured_password) in defaults.items():
+        if not configured_password or configured_password == demo_password:
+            raise BookingError("Production staff passwords must be set and must not use the published demo credentials.",
+                               500, "unsafe_production_password")
+        row = conn.execute("SELECT staff_id,salt,password_hash FROM staff WHERE lower(email)=lower(?)", (email,)).fetchone()
+        if row and security.verify_password(demo_password, row["salt"], row["password_hash"]):
+            salt, digest = security.hash_password(configured_password)
+            conn.execute("UPDATE staff SET salt=?,password_hash=? WHERE staff_id=?", (salt, digest, row["staff_id"]))
+            conn.execute("DELETE FROM sessions WHERE staff_id=?", (row["staff_id"],))
+
+    demo_emails = ("demo.none@hotel.test", "demo.silver@hotel.test", "demo.gold@hotel.test", "demo.platinum@hotel.test")
+    placeholders = ",".join("?" for _ in demo_emails)
+    demo_guest_ids = [r[0] for r in conn.execute(
+        f"SELECT guest_id FROM guests WHERE lower(email) IN ({placeholders})", demo_emails).fetchall()]
+    if demo_guest_ids:
+        id_placeholders = ",".join("?" for _ in demo_guest_ids)
+        conn.execute(f"DELETE FROM guest_sessions WHERE account_id IN (SELECT account_id FROM guest_accounts WHERE guest_id IN ({id_placeholders}))", demo_guest_ids)
+        conn.execute(f"DELETE FROM guest_accounts WHERE guest_id IN ({id_placeholders})", demo_guest_ids)
+        conn.execute(f"DELETE FROM demo_loyalty_profiles WHERE guest_id IN ({id_placeholders})", demo_guest_ids)
+    conn.execute(f"DELETE FROM pending_guest_registrations WHERE lower(email) IN ({placeholders})", demo_emails)
+    conn.execute(f"DELETE FROM guest_password_resets WHERE lower(email) IN ({placeholders})", demo_emails)
+
+
+def ensure_guest_auth_schema(conn):
+    """Add customer login tables and security metadata to existing databases."""
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS guest_accounts (
+            account_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            guest_id INTEGER NOT NULL UNIQUE REFERENCES guests(guest_id) ON DELETE CASCADE,
+            salt TEXT NOT NULL,
+            password_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS guest_sessions (
+            token_hash TEXT PRIMARY KEY,
+            account_id INTEGER NOT NULL REFERENCES guest_accounts(account_id) ON DELETE CASCADE,
+            csrf_token TEXT,
+            expires_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_guest_sessions_expiry ON guest_sessions(expires_at);
+        CREATE TABLE IF NOT EXISTS app_secrets (name TEXT PRIMARY KEY, value TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS pending_guest_registrations (
+            email TEXT PRIMARY KEY, full_name TEXT NOT NULL, phone TEXT NOT NULL,
+            salt TEXT NOT NULL, password_hash TEXT NOT NULL,
+            code_salt TEXT NOT NULL, code_hash TEXT NOT NULL,
+            expires_at TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS guest_password_resets (
+            email TEXT PRIMARY KEY, code_salt TEXT NOT NULL, code_hash TEXT NOT NULL,
+            expires_at TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+    """)
+    staff_columns = [r[1] for r in conn.execute("PRAGMA table_info(staff)")]
+    if "phone" not in staff_columns:
+        conn.execute("ALTER TABLE staff ADD COLUMN phone TEXT NOT NULL DEFAULT ''")
+    guest_session_columns = [r[1] for r in conn.execute("PRAGMA table_info(guest_sessions)")]
+    if "csrf_token" not in guest_session_columns:
+        conn.execute("ALTER TABLE guest_sessions ADD COLUMN csrf_token TEXT")
+    # Existing guest sessions predate CSRF tokens. Backfill them so a safe
+    # rolling upgrade does not leave signed-in guests unable to submit forms.
+    for row in conn.execute("SELECT token_hash FROM guest_sessions WHERE csrf_token IS NULL").fetchall():
+        conn.execute("UPDATE guest_sessions SET csrf_token=? WHERE token_hash=?",
+                     (secrets.token_urlsafe(24), row["token_hash"]))
+    # Remove the legacy anonymous-booking bearer-code column. New bookings are
+    # owned by authenticated guest accounts and do not need a separate code.
+    columns = [r[1] for r in conn.execute("PRAGMA table_info(reservations)")]
+    if "manage_token_hash" in columns:
+        conn.execute("DROP INDEX IF EXISTS idx_res_manage_token")
+        try:
+            conn.execute("ALTER TABLE reservations DROP COLUMN manage_token_hash")
+        except sqlite3.OperationalError:
+            # Older SQLite builds may not support DROP COLUMN. The column is
+            # then left unused; no code is generated, read or accepted.
+            pass
+    # Remove bearer codes from confirmation messages created by older versions.
+    if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='emails'").fetchone():
+        for mail in conn.execute("SELECT email_id, body FROM emails").fetchall():
+            body = re.sub(
+                r"\nTo manage your booking, enter the reservation number and this private management code:.*?(?:\nKeep this code private\.[^\n]*)?",
+                "", mail["body"] or "", flags=re.IGNORECASE | re.DOTALL)
+            if body != (mail["body"] or ""):
+                conn.execute("UPDATE emails SET body=? WHERE email_id=?", (body, mail["email_id"]))
+    if not conn.execute("SELECT 1 FROM app_secrets WHERE name = ?", ("pass_secret",)).fetchone():
+        conn.execute("INSERT INTO app_secrets(name,value) VALUES (?,?)", ("pass_secret", secrets.token_hex(32)))
+
+
 def migrate(path):
     """Bring a database made by an older version up to date (adds the locked nightly rate and date indexes)."""
     conn = connect(path)
     try:
+        ensure_guest_auth_schema(conn)
         columns = [r[1] for r in conn.execute("PRAGMA table_info(reservations)")]
         if "nightly_rate" not in columns:
             conn.execute("ALTER TABLE reservations ADD COLUMN nightly_rate REAL NOT NULL DEFAULT 0")
             # old reservations keep the price they were booked at: rate = saved total / nights
             conn.execute("""UPDATE reservations SET nightly_rate =
                              total_price / MAX(1, CAST(julianday(check_out) - julianday(check_in) AS INTEGER))""")
+        if "guest_count" not in columns:
+            conn.execute("ALTER TABLE reservations ADD COLUMN guest_count INTEGER NOT NULL DEFAULT 1 CHECK (guest_count >= 1)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_res_checkin ON reservations(check_in)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_pay_date ON payments(payment_date)")
         import enhancements
@@ -101,8 +206,80 @@ def migrate(path):
         import features
         if features.ensure_columns(conn):          # housekeeping and check-in columns were just added
             features.seed_housekeeping(conn)
+        # Demo logins are useful in local development, but must never be
+        # provisioned as a side effect of upgrading a production database.
+        if os.environ.get("APP_ENV", "development").lower() != "production":
+            seed_loyalty_demo_accounts(conn)
     finally:
         conn.close()
+
+
+# Four ready-to-use sample guest profiles for demonstrating the loyalty system.
+# Change these development-only passwords before exposing the app publicly.
+DEMO_LOYALTY_ACCOUNTS = (
+    ("None", "Loyalty None", "demo.none@hotel.test", "NoneTier#2026", 0),
+    ("Silver", "Loyalty Silver", "demo.silver@hotel.test", "SilverTier#2026", 2),
+    ("Gold", "Loyalty Gold", "demo.gold@hotel.test", "GoldTier#2026", 5),
+    ("Platinum", "Loyalty Platinum", "demo.platinum@hotel.test", "PlatinumTier#2026", 10),
+)
+
+def seed_loyalty_demo_accounts(conn):
+    """Create the four sample logins and attach existing demo stays as their history.
+
+    Existing reservation rows are reassigned rather than duplicated, so the demo booking
+    total, payments, room availability, and reservation metrics remain unchanged.
+    """
+    demo_guest_ids = {}
+    for tier, full_name, email, password, target_stays in DEMO_LOYALTY_ACCOUNTS:
+        guest = conn.execute("SELECT guest_id FROM guests WHERE lower(email)=lower(?)", (email,)).fetchone()
+        if guest:
+            guest_id = guest["guest_id"]
+            conn.execute("UPDATE guests SET full_name=?, phone=? WHERE guest_id=?",
+                         (full_name, "+7700000000", guest_id))
+        else:
+            guest_id = conn.execute(
+                "INSERT INTO guests(full_name, phone, email) VALUES (?,?,?)",
+                (full_name, "+7700000000", email)
+            ).lastrowid
+
+        account = conn.execute("SELECT account_id FROM guest_accounts WHERE guest_id=?", (guest_id,)).fetchone()
+        if not account:
+            salt, digest = security.hash_password(password)
+            conn.execute("INSERT INTO guest_accounts(guest_id,salt,password_hash) VALUES (?,?,?)",
+                         (guest_id, salt, digest))
+        conn.execute(
+            "INSERT OR IGNORE INTO demo_loyalty_profiles(guest_id, simulated_completed_stays) VALUES (?,?)",
+            (guest_id, target_stays)
+        )
+        demo_guest_ids[tier] = guest_id
+
+    # Give Silver, Gold and Platinum profiles useful completed-stay examples.
+    # Never take reservations belonging to a registered account or an account already used.
+    for tier, _full_name, _email, _password, target_stays in DEMO_LOYALTY_ACCOUNTS:
+        guest_id = demo_guest_ids[tier]
+        if target_stays <= 0:
+            continue
+        already_has_history = conn.execute(
+            "SELECT 1 FROM reservations WHERE guest_id=? LIMIT 1", (guest_id,)
+        ).fetchone()
+        if already_has_history:
+            continue
+        candidates = conn.execute(
+            """SELECT r.reservation_id FROM reservations r
+               JOIN guests g ON g.guest_id=r.guest_id
+               WHERE r.status='Completed'
+                 AND g.email GLOB 'guest[0-9]*@example.kz'
+                 AND r.guest_id NOT IN (SELECT guest_id FROM guest_accounts)
+                 AND r.guest_id NOT IN (SELECT guest_id FROM demo_loyalty_profiles)
+               ORDER BY r.check_in DESC, r.reservation_id DESC LIMIT ?""",
+            (target_stays,)
+        ).fetchall()
+        if len(candidates) < target_stays:
+            continue
+        conn.executemany(
+            "UPDATE reservations SET guest_id=? WHERE reservation_id=?",
+            [(guest_id, row["reservation_id"]) for row in candidates]
+        )
 
 
 FIRST_NAMES = ["Aigerim", "Daniyar", "Marat", "Sara", "Timur", "Dana", "Yerlan", "Madina", "Askar", "Aliya",
@@ -364,12 +541,12 @@ def _confirmation_text(res_id, guest_name, room, ci, co, nights, total):
             f"Reservation number: {res_id}\nRoom: {room['room_number']} ({room['type_name']})\n"
             f"Check-in: {ci} from {CHECK_IN_HOUR}:00\nCheck-out: {co}\nNights: {nights}\n"
             f"Total paid: {total:,.0f} KZT\n\n"
-            "Cancellation refunds are calculated automatically from the days remaining before check-in.\n"
-            "To manage your booking, use your reservation number and this email address.\n")
+            "You can view and manage this reservation from the My Reservations page after signing in.\n"
+            "Show the QR check-in pass to the front desk when you arrive.\n")
 
 
 def book_room(conn, room_id, check_in, check_out, method, full_name="", phone="", email="",
-              guest_id=None, simulate_payment_failure=False, add_ons=None):
+              guest_id=None, simulate_payment_failure=False, add_ons=None, guest_count=1):
     """Save the guest (if new), the reservation, the payment and the confirmation email as ONE transaction.
 
     If any step fails everything is rolled back, so no half-finished booking remains.
@@ -381,6 +558,12 @@ def book_room(conn, room_id, check_in, check_out, method, full_name="", phone=""
         room_id = int(room_id)
     except (TypeError, ValueError):
         raise BookingError("The room does not exist.", 404, "not_found")
+    try:
+        guest_count = int(guest_count)
+    except (TypeError, ValueError):
+        raise BookingError("Enter a valid number of guests.", 400, "bad_guest_count")
+    if guest_count < 1 or guest_count > 8:
+        raise BookingError("Guest count must be between 1 and 8.", 400, "bad_guest_count")
     if guest_id is None:
         full_name, phone, email = str(full_name).strip(), str(phone).strip(), str(email).strip()
         if not full_name or not phone or not email:
@@ -397,6 +580,8 @@ def book_room(conn, room_id, check_in, check_out, method, full_name="", phone=""
         room = get_room(conn, room_id)
         if room is None:
             raise BookingError("The room does not exist.", 404, "not_found")
+        if guest_count > int(room["capacity"]):
+            raise BookingError(f"This room accommodates up to {room['capacity']} guests.", 400, "room_capacity_exceeded")
         if guest_id is None:
             found = conn.execute("SELECT guest_id, full_name FROM guests WHERE lower(email) = lower(?)", (email,)).fetchone()
             if found:
@@ -420,9 +605,10 @@ def book_room(conn, room_id, check_in, check_out, method, full_name="", phone=""
         total = base_total - discount + addon_total
         res_id = conn.execute(
             """INSERT INTO reservations(guest_id, room_id, check_in, check_out, status, total_price, nightly_rate,
-               loyalty_tier, loyalty_discount, base_total)
-               VALUES (?,?,?,?, 'Confirmed', ?, ?, ?, ?, ?)""",
-            (guest_id, room_id, ci, co, total, room["price_per_night"], loyalty["tier"], discount, base_total)).lastrowid
+               guest_count, loyalty_tier, loyalty_discount, base_total)
+               VALUES (?,?,?,?, 'Confirmed', ?, ?, ?, ?, ?, ?)""",
+            (guest_id, room_id, ci, co, total, room["price_per_night"], guest_count,
+             loyalty["tier"], discount, base_total)).lastrowid
         for key, unit, label in selected:
             conn.execute("INSERT INTO reservation_addons(reservation_id,addon_key,unit_price) VALUES(?,?,?)", (res_id,key,unit))
             conn.execute("INSERT INTO revenue_lines(reservation_id,category,amount) VALUES(?,?,?)", (res_id,label,unit))
@@ -445,12 +631,28 @@ def book_room(conn, room_id, check_in, check_out, method, full_name="", phone=""
         raise friendly(e)
     return {"reservation_id": res_id, "room_id": room_id, "room_number": room["room_number"],
             "type_name": room["type_name"], "check_in": ci, "check_out": co, "nights": nights,
-            "total_price": total, "base_total": base_total, "loyalty_tier": loyalty["tier"],
+            "total_price": total, "base_total": base_total, "guest_count": guest_count, "loyalty_tier": loyalty["tier"],
             "loyalty_discount_percent": loyalty["discount_percent"], "loyalty_discount_amount": discount,
             "addons_total": addon_total, "email_id": email_id, "to_email": to_email}
 
 
 # ---------------------------------------------------------------- confirmation emails (FR-02)
+def send_transactional_email(to_email, subject, body):
+    """Send security mail only through configured SMTP; never silently simulate OTP delivery."""
+    host = os.environ.get("SMTP_HOST")
+    if not host:
+        raise BookingError("Password recovery email requires SMTP_HOST to be configured.", 503, "smtp_not_configured")
+    msg = EmailMessage()
+    msg["From"] = os.environ.get("SMTP_FROM", "bookings@hotel.example")
+    msg["To"], msg["Subject"] = to_email, subject
+    msg.set_content(body)
+    with smtplib.SMTP(host, int(os.environ.get("SMTP_PORT", "587")), timeout=10) as smtp:
+        smtp.starttls()
+        if os.environ.get("SMTP_USER"):
+            smtp.login(os.environ["SMTP_USER"], os.environ.get("SMTP_PASSWORD", ""))
+        smtp.send_message(msg)
+
+
 def deliver_pending_emails(conn):
     """Send every Pending email. Uses SMTP if SMTP_HOST is set, otherwise delivery is simulated."""
     host = os.environ.get("SMTP_HOST")
@@ -458,15 +660,7 @@ def deliver_pending_emails(conn):
     for row in conn.execute("SELECT * FROM emails WHERE status = 'Pending' ORDER BY email_id").fetchall():
         try:
             if host:
-                msg = EmailMessage()
-                msg["From"] = os.environ.get("SMTP_FROM", "bookings@hotel.example")
-                msg["To"], msg["Subject"] = row["to_email"], row["subject"]
-                msg.set_content(row["body"])
-                with smtplib.SMTP(host, int(os.environ.get("SMTP_PORT", "587")), timeout=10) as smtp:
-                    smtp.starttls()
-                    if os.environ.get("SMTP_USER"):
-                        smtp.login(os.environ["SMTP_USER"], os.environ.get("SMTP_PASSWORD", ""))
-                    smtp.send_message(msg)
+                send_transactional_email(row["to_email"], row["subject"], row["body"])
                 channel = "smtp"
             else:
                 channel = "simulated"
@@ -510,9 +704,11 @@ def get_email(conn, email_id):
 
 
 def list_emails(conn, limit=100):
-    return [dict(r) for r in conn.execute(
+    """Return the staff email outbox. Legacy management codes are removed by migration."""
+    rows = conn.execute(
         "SELECT email_id, reservation_id, to_email, subject, body, status, channel, created_at, sent_at "
-        "FROM emails ORDER BY email_id DESC LIMIT ?", (limit,)).fetchall()]
+        "FROM emails ORDER BY email_id DESC LIMIT ?", (limit,)).fetchall()
+    return [dict(row) for row in rows]
 
 
 # ---------------------------------------------------------------- reading reservations
@@ -536,26 +732,15 @@ def _decorate(row, now=None):
 
 def reservation_detail(conn, reservation_id, now=None):
     row = conn.execute(
-        f"""SELECT r.reservation_id, r.status, r.check_in, r.check_out, r.total_price, r.created_at,
+        f"""SELECT r.reservation_id, r.status, r.check_in, r.check_out, r.total_price, r.created_at, r.guest_count,
                    g.full_name, g.email, g.phone, ro.room_number, ro.room_id, rt.type_name,
+                   r.loyalty_tier, r.loyalty_discount,
+                   (SELECT payment_method FROM payments p WHERE p.reservation_id=r.reservation_id ORDER BY p.payment_id DESC LIMIT 1) AS payment_method,
                    {_NET_PAID} AS paid
             FROM reservations r JOIN guests g ON g.guest_id = r.guest_id
             JOIN rooms ro ON ro.room_id = r.room_id JOIN room_types rt ON rt.room_type_id = ro.room_type_id
             WHERE r.reservation_id = ?""", (reservation_id,)).fetchone()
     return _decorate(row, now) if row else None
-
-
-def find_guest_reservation(conn, reservation_id, email, now=None):
-    """A guest can see a reservation only with the right reservation number AND email."""
-    try:
-        rid = int(reservation_id)
-    except (TypeError, ValueError):
-        rid = -1
-    d = reservation_detail(conn, rid, now)
-    if d is None or d["email"].lower() != str(email).strip().lower():
-        raise BookingError("No reservation found for this number and email.", 404, "not_found")
-    d.pop("phone", None)
-    return d
 
 
 _RES_JOINS = """FROM reservations r JOIN guests g ON g.guest_id = r.guest_id

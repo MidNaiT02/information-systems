@@ -8,21 +8,25 @@ NOT been tried on a real server yet. Test every step on a spare computer first, 
 - Windows 10 or newer (or Windows Server), Python 3.8 or newer ("py --version" must work).
 - The project folder, for example `C:\hotel_booking_product`.
 - A name for the site, for example `bookings.myhotel.kz`, pointing to the computer (needed for HTTPS).
+- A real SMTP mailbox for booking confirmations and guest password recovery. Guest registration does not require email verification.
+
+Install the production WSGI server dependency:
+
+    py -m pip install -r requirements.txt
 
 ## 2. First start and passwords
 
-1. Choose real passwords BEFORE the first start (the database is created and the staff accounts are made at the first start):
+1. Set production mode and unique staff passwords before starting the application. Both variables must be present on every production start. On a legacy database, known demo staff passwords are automatically rotated to these values; staff passwords that were already changed are preserved:
 
+        $env:APP_ENV = "production"
         $env:FRONTDESK_PASSWORD = "your-own-long-password-1"
         $env:MANAGER_PASSWORD   = "another-long-password-2"
         py run.py
 
-2. Open http://127.0.0.1:8000, log in as staff, and check that no yellow demo password warning appears.
-3. If the database already exists, log in and use the Account button to change both passwords.
-4. The demo data (5,000 fictional reservations) is only for trying the system. A real hotel starts with an empty history:
-   stop the server, delete `data\hotel.db`, and start with:
-
-        py run.py --reset --empty
+   Production mode creates an empty hotel database and uses Waitress. It does not seed demo guests or demo reservations,
+   and startup never prints passwords. Do not put real secrets in source files or shared `.env` files.
+2. Keep the app bound to `127.0.0.1:8000` and put the HTTPS reverse proxy described below in front of it.
+3. Do not expose a database containing fictional demo reservations or guest data. Back it up and initialise a clean production database unless the database contains real hotel data you intend to keep. During production startup, known demo loyalty guest accounts are disabled and still-default staff passwords are rotated from the environment variables.
 
    This creates the rooms and the two staff accounts and nothing else. The first real booking is reservation number 1.
 
@@ -50,7 +54,8 @@ and keep port 8000 closed to the network.
 
 ## 5. Real emails
 
-Set these variables and restart. Without them the confirmation emails are only written to the outbox (simulated).
+Set these variables and restart. Booking confirmations use the outbox and are marked simulated when SMTP is absent.
+Guest registration is immediate and does not require SMTP. Forgotten-password recovery requires SMTP and does not reset an account unless the one-time code can be sent.
 
     SMTP_HOST=smtp.myhotel.kz   SMTP_PORT=587   SMTP_USER=bookings@myhotel.kz   SMTP_PASSWORD=...   SMTP_FROM=bookings@myhotel.kz
 
@@ -87,13 +92,16 @@ can only be measured with such a monitor.
 
 ## 9. Security checklist
 
-- [ ] Both demo passwords changed, and no demo password warning is shown.
+- [ ] `APP_ENV=production` is set, Waitress is installed, and both staff password environment variables are present on every start.
+- [ ] A clean production database was created with unique `FRONTDESK_PASSWORD` and `MANAGER_PASSWORD` environment variables.
 - [ ] HTTPS works, `COOKIE_SECURE=1` is set, port 8000 is not reachable from the network.
 - [ ] Backups run every night, are stored on another disk, and a restore was tested.
 - [ ] Only the hotel owner can read the `data` and backup folders (folder permissions).
 - [ ] Windows and Python get security updates.
-- [ ] SMTP password and other secrets are only in system environment variables, not in files that are shared.
-- [ ] A real payment provider is NOT connected: the program only records simulated payments. Do not take real card numbers with it.
+- [ ] SMTP password and other secrets are only in protected system environment variables, not in files that are shared.
+- [ ] Password-reset codes are delivered to a controlled mailbox and SMTP is tested. Guest registration does not use email verification.
+- [ ] A real payment provider is NOT connected: the program only records simulated payments. Do not take real card numbers or treat a simulated `Paid` row as collected funds.
+- [ ] SQLite is used only for a small single-hotel workload; use PostgreSQL and repeat load tests before scaling up.
 
 ## 10. Common problems
 

@@ -1,23 +1,31 @@
 <!doctype html>
-<html lang="en">
+<html lang="kk" data-theme="cyberpunk" data-fixed-theme="cyberpunk" data-default-lang="kz">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Hotel Booking System // Night City</title>
+  <title>NEON OASIS — NIGHT CITY HOTEL NETWORK</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='0' fill='%23000000'/%3E%3Ctext x='16' y='24' font-size='20' text-anchor='middle' fill='%23FCEE0A' font-family='sans-serif' font-weight='700'%3E1%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/gta-vi.css">
 </head>
 <body>
+  <canvas id="ambience-canvas" aria-hidden="true"></canvas>
   <a class="skip" href="#app">Skip to content</a>
   <header class="topbar">
-    <a class="brand" href="#/">Hotel Booking System</a>
+    <a class="brand" href="#/">NEON OASIS <small class="brand-sub">// NIGHT CITY HOTEL NETWORK</small></a>
     <nav id="nav" aria-label="Main"></nav>
   </header>
   <main id="app" tabindex="-1"></main>
   <dialog id="dlg" aria-labelledby="dlg-title"></dialog>
   <div id="toast" role="status" aria-live="polite"></div>
+  <div id="route-wipe" aria-hidden="true"></div>
+  <footer class="site-footer cyber-footer"><div class="footer-mark">NEON OASIS<span> / NIGHT CITY</span></div><p>THE CITY NEVER SLEEPS. NEITHER DO YOU.</p><div class="footer-disclaimer">SYSTEM NOTICE: ALL SERVICES ARE UNDER CORPORATE OVERSIGHT · SECURITY CLEARANCE: HIGH · NIGHT CITY, 2077</div></footer>
   <script src="/static/i18n.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+  <script src="/static/ambience.js"></script>
   <script src="/static/app.js"></script>
   <script src="/static/assistant.js"></script>
 </body>

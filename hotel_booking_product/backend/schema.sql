@@ -32,6 +32,7 @@ CREATE TABLE reservations (
   status         TEXT NOT NULL CHECK (status IN ('Confirmed','Cancelled','Completed')),
   total_price    REAL NOT NULL DEFAULT 0 CHECK (total_price >= 0),  -- price saved at booking time
   nightly_rate   REAL NOT NULL DEFAULT 0 CHECK (nightly_rate >= 0), -- rate per night locked at booking time
+  guest_count    INTEGER NOT NULL DEFAULT 1 CHECK (guest_count >= 1),
   created_at     TEXT NOT NULL DEFAULT (datetime('now')),
   CHECK (check_out > check_in)
 );
@@ -50,6 +51,7 @@ CREATE TABLE staff (
   full_name     TEXT NOT NULL,
   role          TEXT NOT NULL CHECK (role IN ('FrontDesk','Manager')),
   email         TEXT NOT NULL UNIQUE,
+  phone         TEXT NOT NULL DEFAULT '',
   salt          TEXT NOT NULL,
   password_hash TEXT NOT NULL
 );
@@ -136,3 +138,10 @@ INSERT INTO rooms (room_type_id, room_number, floor, status)
 SELECT 3, CAST(800 + i AS TEXT), 8, 'Available' FROM n;
 
 INSERT INTO rooms (room_type_id, room_number, floor, status) VALUES (4, '901', 9, 'Available');
+
+
+-- Application secrets are generated once per database and never shipped in source code.
+CREATE TABLE app_secrets (
+  name TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);

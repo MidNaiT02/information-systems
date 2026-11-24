@@ -1,0 +1,271 @@
+/* The Marisol / GTA VI-inspired Vice City look. Original art only; scoped to this page. */
+:root[data-theme="gta"] {
+  --ink: #0e0e12;
+  --slate: #514a50;
+  --mist: #f7f3ec;
+  --surface: #fffaf3;
+  --surface-2: #f2e7db;
+  --line: #0e0e12;
+  --teal: #0b2a3b;
+  --teal-dark: #17485b;
+  --brass: #ff6b4a;
+  --pink: #ff2e88;
+  --danger: #a82448;
+  --cut: 0px;
+  --font-display: "Anton", "Bebas Neue", sans-serif;
+  --font-body: "Inter", sans-serif;
+}
+:root[data-theme="gta"] { scroll-behavior: smooth; }
+:root[data-theme="gta"] body {
+  color: var(--ink);
+  background:
+    radial-gradient(ellipse at 6% 14%, rgba(255,46,136,.13), transparent 32rem),
+    radial-gradient(ellipse at 100% 48%, rgba(255,162,76,.14), transparent 36rem),
+    #0b2a3b;
+  font-family: "Inter", sans-serif;
+}
+:root[data-theme="gta"] body::before {
+  content: ""; position: fixed; inset: 0; z-index: 100; pointer-events: none; opacity: .055;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.92' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.9'/%3E%3C/svg%3E");
+}
+:root[data-theme="gta"] body::after {
+  content: ""; position: fixed; z-index: 0; pointer-events: none; right: -2rem; bottom: 0; width: 24rem; height: 34rem; opacity: .11;
+  background: repeating-conic-gradient(from 170deg at 50% 100%, transparent 0deg 5deg, #ffa24c 5deg 6deg, transparent 6deg 11deg);
+  clip-path: polygon(50% 0, 56% 100%, 44% 100%);
+}
+:root[data-theme="gta"] h1,
+:root[data-theme="gta"] h2,
+:root[data-theme="gta"] h3,
+:root[data-theme="gta"] .brand,
+:root[data-theme="gta"] #nav a,
+:root[data-theme="gta"] #nav button,
+:root[data-theme="gta"] .btn,
+:root[data-theme="gta"] th,
+:root[data-theme="gta"] .tabs a,
+:root[data-theme="gta"] .kpi b {
+  font-family: "Anton", "Bebas Neue", sans-serif;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: .045em;
+}
+:root[data-theme="gta"] h1 { color: #fffaf2; font-size: clamp(3rem, 8vw, 6.8rem); line-height: .94; letter-spacing: -.015em; text-shadow: 4px 4px 0 #3b1a5a; max-width: 13ch; }
+:root[data-theme="gta"] h2 { color: #3b1a5a; font-size: clamp(1.8rem, 4vw, 3rem); }
+:root[data-theme="gta"] h3 { color: #3b1a5a; }
+:root[data-theme="gta"] p,
+:root[data-theme="gta"] label,
+:root[data-theme="gta"] td,
+:root[data-theme="gta"] .meta { font-family: "Inter", sans-serif; }
+:root[data-theme="gta"] .topbar {
+  position: sticky; top: 0; z-index: 90; display: flex; gap: .8rem 1.5rem; align-items: center;
+  background: rgba(11,42,59,.97); color: #fffaf3; padding: .7rem clamp(1rem,4vw,3rem);
+  border-bottom: 4px solid #ff2e88; box-shadow: 0 5px 0 #0e0e12, 0 10px 25px #0e0e1230; backdrop-filter: blur(14px);
+}
+:root[data-theme="gta"] .brand { color: #fffaf3; text-decoration: none; font-size: 1.65rem; letter-spacing: .09em; line-height: .9; text-shadow: 2px 2px 0 #ff2e88; }
+:root[data-theme="gta"] .brand::before { content: "✦ "; color: #ffa24c; text-shadow: none; }
+:root[data-theme="gta"] .brand-sub { display: block; margin-top: .32rem; font: 700 .56rem "Inter",sans-serif; color: #ffd8c7; letter-spacing: .16em; }
+:root[data-theme="gta"] #nav { display: flex; align-items: center; gap: .45rem .8rem; flex-wrap: wrap; }
+:root[data-theme="gta"] #nav a,
+:root[data-theme="gta"] #nav button { color: #fffaf3; border: 0; text-decoration: none; padding: .5rem .65rem; background: transparent; font-size: .91rem; letter-spacing: .065em; cursor: pointer; }
+:root[data-theme="gta"] #nav a:hover,
+:root[data-theme="gta"] #nav button:hover { color: #ffa24c; }
+:root[data-theme="gta"] #nav a[aria-current="page"] { color: #0e0e12; background: #ffa24c; box-shadow: 4px 4px 0 #ff2e88; }
+:root[data-theme="gta"] #nav .who { color: #ffb8d3; font-size: .82rem; }
+:root[data-theme="gta"] .theme-switch,
+:root[data-theme="gta"] .lang-switch { display: inline-flex; align-items: center; gap: .3rem; }
+:root[data-theme="gta"] .theme-switch .sr-only,
+:root[data-theme="gta"] .lang-switch .sr-only { position: static; width: auto; height: auto; margin: 0; clip: auto; overflow: visible; white-space: nowrap; color: #ffd8c7; font: 700 .62rem "Inter",sans-serif; }
+:root[data-theme="gta"] .theme-switch select,
+:root[data-theme="gta"] .lang-switch select { width: auto; min-width: 3.2rem; padding: .38rem .5rem; color: #fffaf3; background: #163d4f; border: 1px solid #ffa24c; border-radius: 999px; font: 700 .72rem "Inter",sans-serif; }
+:root[data-theme="gta"] .after-dark-toggle { display: inline-flex; align-items: center; gap: .45rem; padding: .42rem .7rem !important; border: 1px solid #ffa24c !important; border-radius: 999px; color: #fffaf3 !important; background: #3b1a5a !important; box-shadow: 3px 3px 0 #ff2e88; font: 800 .68rem "Inter",sans-serif !important; }
+:root[data-theme="gta"] .after-dark-toggle b { color: #ffa24c; }
+:root[data-theme="gta"] .after-dark-dot { width: .52rem; height: .52rem; border-radius: 50%; background: #b6c9c4; box-shadow: 0 0 0 2px #ffffff22; }
+:root[data-theme="gta"][data-after-dark="true"] .after-dark-dot { background: #ff2e88; box-shadow: 0 0 9px #ff2e88; }
+:root[data-theme="gta"] .system-status { display: inline-flex; align-items: center; gap: .35rem; color: #c4e1db; font: 700 .61rem "Inter",sans-serif; letter-spacing: .08em; white-space: nowrap; }
+:root[data-theme="gta"] .system-status i { display: inline-block; width: .42rem; height: .42rem; border-radius: 50%; background: #a7edba; box-shadow: 0 0 8px #a7edba; }
+:root[data-theme="gta"] main { max-width: 1440px; padding: clamp(.8rem,3vw,2.4rem); }
+:root[data-theme="gta"] .hero {
+  position: relative; isolation: isolate; overflow: hidden; margin: 0 0 0; padding: clamp(1.3rem,5vw,4.5rem);
+  min-height: 24rem; color: #fffaf3; background: linear-gradient(112deg,#3b1a5a 0%,#ff2e88 47%,#ff6b4a 77%,#ffa24c 100%);
+  border: 3px solid #0e0e12; box-shadow: 8px 8px 0 #0e0e12;
+}
+:root[data-theme="gta"] .hero::before { content:none; }
+:root[data-theme="gta"] .hero-eyebrow { display:block; margin:0 0 1rem; color:#fff0df; font:800 .7rem "Inter",sans-serif; letter-spacing:.19em; }
+:root[data-theme="gta"] .hero::after { content: ""; position: absolute; z-index: -1; right: -3rem; top: -7rem; width: min(57vw,45rem); aspect-ratio: 1; border: 2px solid #ffffff55; border-radius: 50%; box-shadow: 0 0 0 28px #ffffff12,0 0 0 58px #ffffff10,0 0 0 90px #ffffff0c; }
+:root[data-theme="gta"] .hero p { max-width: 58ch; color: #fff6ed; font-size: 1.05rem; font-weight: 500; }
+:root[data-theme="gta"] .searchbar {
+  position: relative; z-index: 1; display: flex; flex-wrap: wrap; align-items: end; gap: .9rem 1rem; margin-top: 1.5rem;
+  padding: 1.15rem; background: rgba(14,14,18,.82); color: #fffaf3; border: 2px solid #fff4e8;
+  border-left: 7px solid #ffa24c; border-radius: 1.1rem; backdrop-filter: blur(18px); box-shadow: 6px 6px 0 #0e0e12;
+}
+:root[data-theme="gta"] .field { gap: .35rem; min-width: 9rem; flex: 1 1 10rem; }
+:root[data-theme="gta"] .field > span { color: #ffd3b7; font: 800 .69rem "Inter",sans-serif; letter-spacing: .09em; text-transform: uppercase; }
+:root[data-theme="gta"] input,
+:root[data-theme="gta"] select,
+:root[data-theme="gta"] textarea { color: #fffaf3; background: #24202a; border: 1px solid #c78d88; border-radius: .4rem; color-scheme: dark; font: 500 .9rem "Inter",sans-serif; padding: .68rem .75rem; }
+:root[data-theme="gta"] input:focus,
+:root[data-theme="gta"] select:focus,
+:root[data-theme="gta"] textarea:focus { border-color: #ffa24c; box-shadow: 0 0 0 2px #ffa24c55; }
+:root[data-theme="gta"] .nights { color: #ffa24c; font: 400 1.4rem "Anton",sans-serif; align-self: center; min-width: 5rem; }
+:root[data-theme="gta"] .btn { color: #fffaf3; background: #ff2e88; border: 2px solid #0e0e12; border-radius: 999px; padding: .78rem 1.45rem; box-shadow: 6px 6px 0 #0e0e12; text-shadow: none; transition: transform .15s ease,box-shadow .15s ease,background .15s ease; }
+:root[data-theme="gta"] .btn:hover { color: #fff; background: #ff6b4a; filter: none; transform: translate(3px,3px); box-shadow: 3px 3px 0 #0e0e12; animation: marisolGlitch .24s steps(2,end); }
+:root[data-theme="gta"] .btn:active { transform: translate(6px,6px); box-shadow: none; }
+:root[data-theme="gta"] .btn.secondary { color: #fffaf3; background: #0b2a3b; border-color: #0e0e12; }
+:root[data-theme="gta"] .btn.danger { color: white; background: #a82448; }
+:root[data-theme="gta"] .btn.small { padding: .45rem .95rem; }
+:root[data-theme="gta"] .mobile-search-trigger { display: none; }
+:root[data-theme="gta"] .marquee { margin: 1.7rem calc(clamp(.8rem,3vw,2.4rem) * -1) 2rem; overflow: hidden; background: #0b2a3b; color: #fffaf3; border-top: 2px solid #ffa24c; border-bottom: 2px solid #ffa24c; transform: rotate(-1deg); }
+:root[data-theme="gta"] .marquee-track { display: flex; width: max-content; gap: 2rem; padding: .8rem 0; white-space: nowrap; font: 400 1.1rem "Anton",sans-serif; letter-spacing: .12em; animation: marisolTicker 26s linear infinite; }
+:root[data-theme="gta"] .marquee-track span { color: #ffd1b5; }
+:root[data-theme="gta"] .marquee-track b { color: #ff6b4a; font-weight: 400; }
+:root[data-theme="gta"] #results { margin-top: 1.4rem; padding: clamp(1rem,3vw,2rem); background: #f7f3ec; color: #0e0e12; border: 3px solid #0e0e12; box-shadow: 8px 8px 0 #0e0e12; }
+:root[data-theme="gta"] #results h2 { color: #3b1a5a; }
+:root[data-theme="gta"] #results .meta { color: #514a50; }
+:root[data-theme="gta"] .results-tools { display: flex; justify-content: space-between; align-items: end; flex-wrap: wrap; gap: 1rem; }
+:root[data-theme="gta"] .room-type-filter { max-width: 18rem; }
+:root[data-theme="gta"] .room-type-filter > span { color: #3b1a5a; }
+:root[data-theme="gta"] .room-type-filter select { color: #0e0e12; background: #fffaf3; border-color: #3b1a5a; }
+:root[data-theme="gta"] .plaques { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,265px),1fr)); gap: 1.35rem; list-style: none; padding: .35rem .35rem .8rem; margin: 1rem 0 0; }
+:root[data-theme="gta"] .plaque { display: flex; flex-direction: column; overflow: hidden; min-height: 100%; background: #fffaf3; color: #0e0e12; border: 3px solid #0e0e12; box-shadow: 8px 8px 0 #0e0e12; transition: transform .2s ease,box-shadow .2s ease; animation: marisolCardIn .55s cubic-bezier(.2,.85,.25,1) both; }
+:root[data-theme="gta"] .plaque:nth-child(2) { animation-delay: .07s; }
+:root[data-theme="gta"] .plaque:nth-child(3) { animation-delay: .14s; }
+:root[data-theme="gta"] .plaque:nth-child(4) { animation-delay: .21s; }
+:root[data-theme="gta"] .plaque:hover { transform: translate(-3px,-4px) rotate(-.25deg); box-shadow: 11px 12px 0 #0e0e12; filter: none; }
+:root[data-theme="gta"] .room-image { height: clamp(145px,18vw,205px); width: 100%; overflow: hidden; border-bottom: 3px solid #0e0e12; background: #3b1a5a; }
+:root[data-theme="gta"] .room-image img { display: block; width: 100%; height: 100%; object-fit: cover; }
+:root[data-theme="gta"] .plaque .door { order: -1; width: auto; min-height: 2.7rem; flex-direction: row; justify-content: space-between; padding: .45rem .8rem; color: #fffaf3; background: #3b1a5a; border: 0; border-bottom: 2px solid #0e0e12; background-image: none; }
+:root[data-theme="gta"] .plaque .door b { color: #ffa24c; font: 400 1.2rem "Anton",sans-serif; }
+:root[data-theme="gta"] .plaque .door span { margin: 0; color: #f7e3d7; font: 700 .65rem "Inter",sans-serif; }
+:root[data-theme="gta"] .plaque .info { display: flex; flex: 1; flex-direction: column; gap: .45rem; padding: 1rem; }
+:root[data-theme="gta"] .plaque h3 { margin: 0; color: #3b1a5a; font: 400 1.55rem "Anton",sans-serif; }
+:root[data-theme="gta"] .plaque .meta { color: #514a50; font-size: .86rem; }
+:root[data-theme="gta"] .plaque .amenities { color: #0b2a3b; font-size: .75rem; font-weight: 700; }
+:root[data-theme="gta"] .plaque .price { display: flex; align-items: end; justify-content: space-between; flex-wrap: wrap; gap: .8rem; padding-top: .75rem; margin-top: auto; border-top: 1px dashed #c7a49a; }
+:root[data-theme="gta"] .plaque .price strong { color: #ff2e88; font: 400 1.85rem "Anton",sans-serif; }
+:root[data-theme="gta"] .plaque .price small { color: #514a50; }
+:root[data-theme="gta"] .plaque .btn { background: #ff6b4a; color: #0e0e12; font-size: .8rem; }
+:root[data-theme="gta"] .panel,
+:root[data-theme="gta"] .plaque,
+:root[data-theme="gta"] .notice,
+:root[data-theme="gta"] .kpis,
+:root[data-theme="gta"] .table-wrap,
+:root[data-theme="gta"] .summary { border-radius: .35rem; }
+:root[data-theme="gta"] .panel,
+:root[data-theme="gta"] .notice,
+:root[data-theme="gta"] .kpis,
+:root[data-theme="gta"] .table-wrap,
+:root[data-theme="gta"] .summary { background: #fffaf3; color: #0e0e12; border: 2px solid #0e0e12; box-shadow: 5px 5px 0 #0e0e12; }
+:root[data-theme="gta"] .tabs { border-bottom-color: #bd9b92; }
+:root[data-theme="gta"] .tabs a { color: #514a50; }
+:root[data-theme="gta"] .tabs a[aria-current="page"] { color: #0e0e12; background: #ffa24c; border: 0; border-radius: 999px; box-shadow: 4px 4px 0 #0e0e12; }
+:root[data-theme="gta"] th { color: #fffaf3; background: #3b1a5a; }
+:root[data-theme="gta"] td { color: #0e0e12; }
+:root[data-theme="gta"] tbody tr:hover td { background: #ffeadf; }
+:root[data-theme="gta"] .chip { border-radius: 999px; }
+:root[data-theme="gta"] .chip.Confirmed,:root[data-theme="gta"] .chip.Sent { color: #075d4b; background: #d8f2e9; }
+:root[data-theme="gta"] .chip.Pending { color: #71420a; background: #ffedc8; }
+:root[data-theme="gta"] .chip.Cancelled,:root[data-theme="gta"] .chip.Failed { color: #8b1234; background: #ffe1e8; }
+:root[data-theme="gta"] dialog { color: #0e0e12; background: #fffaf3; border: 3px solid #0e0e12; border-radius: 1rem; box-shadow: 9px 9px 0 #ff2e88; }
+:root[data-theme="gta"] .dlg-head { color: #fffaf3; background: #3b1a5a; border-bottom: 0; }
+:root[data-theme="gta"] .dlg-head h2 { color: #ffa24c; }
+:root[data-theme="gta"] .dlg-head button { color: #ffb7d5; }
+:root[data-theme="gta"] .dlg-body { color: #0e0e12; }
+:root[data-theme="gta"] .dlg-body .meta { color: #514a50; }
+:root[data-theme="gta"] .profile-cover { border-radius: .8rem; background: linear-gradient(115deg,#3b1a5a 0%,#ff2e88 53%,#ffa24c 100%); border: 3px solid #0e0e12; box-shadow: 8px 8px 0 #0e0e12; }
+:root[data-theme="gta"] .profile-cover::before { border-color: #ffffff70; }
+:root[data-theme="gta"] .profile-avatar { border-radius: 50%; border: 4px solid #fffaf3; background: linear-gradient(145deg,#3b1a5a,#ff6b4a); box-shadow: 4px 4px 0 #0e0e12; }
+:root[data-theme="gta"] .profile-stat,
+:root[data-theme="gta"] .profile-card,
+:root[data-theme="gta"] .profile-member-note,
+:root[data-theme="gta"] .profile-booking-owner { border-radius: .5rem; background: #fffaf3; color: #0e0e12; border: 2px solid #0e0e12; box-shadow: 4px 4px 0 #0e0e12; }
+:root[data-theme="gta"] .profile-stat-icon,
+:root[data-theme="gta"] .profile-card-symbol,
+:root[data-theme="gta"] .profile-shortcut > span:first-child,
+:root[data-theme="gta"] .profile-gate-icon { border-radius: 50%; background: #ffeadf; color: #3b1a5a; }
+:root[data-theme="gta"] .profile-member-note { border-color: #ff6b4a; }
+:root[data-theme="gta"] .pass { background: #fff3e5; border: 2px dashed #3b1a5a; }
+:root[data-theme="gta"] .pass code { color: #3b1a5a; }
+:root[data-theme="gta"] #hx-fab { background: #ff2e88; color: white; box-shadow: 4px 4px 0 #0e0e12; }
+:root[data-theme="gta"] #hx-panel { border-radius: .8rem; box-shadow: 6px 6px 0 #0e0e12; }
+:root[data-theme="gta"] #toast { background: #0b2a3b; color: #fffaf3; border: 2px solid #ffa24c; box-shadow: 4px 4px 0 #0e0e12; }
+:root[data-theme="gta"] .loyalty-pill { border: 2px solid #ffa24c !important; border-radius: 999px; color: #fffaf3 !important; background: #3b1a5a !important; box-shadow: 3px 3px 0 #ff2e88; }
+:root[data-theme="gta"] .site-footer { position: relative; overflow: hidden; margin: 3rem 0 0; padding: 3rem clamp(1rem,5vw,4rem) 1rem; background: linear-gradient(110deg,#3b1a5a,#ff2e88 48%,#ff6b4a 75%,#ffa24c); color: #fffaf3; border-top: 4px solid #0e0e12; }
+:root[data-theme="gta"] .footer-cta { display: grid; gap: .65rem; max-width: 1150px; margin: auto; }
+:root[data-theme="gta"] .footer-cta span { font: 800 .7rem "Inter",sans-serif; letter-spacing: .2em; }
+:root[data-theme="gta"] .footer-cta strong { max-width: 14ch; font: 400 clamp(2.4rem,7vw,6rem)/.95 "Anton",sans-serif; text-shadow: 4px 4px 0 #3b1a5a; }
+:root[data-theme="gta"] .footer-cta a { justify-self: start; margin-top: .8rem; padding: .75rem 1.4rem; border-radius: 999px; color: #0e0e12; background: #fffaf3; border: 2px solid #0e0e12; box-shadow: 5px 5px 0 #0e0e12; text-decoration: none; font: 400 1rem "Anton",sans-serif; }
+:root[data-theme="gta"] .footer-disclaimer { max-width: 1150px; margin: 2.3rem auto 0; padding-top: .9rem; border-top: 1px solid #ffffff70; color: #fff4e6; font: 600 .58rem "Inter",sans-serif; letter-spacing: .12em; }
+:root[data-theme="gta"] #app.page-enter { animation: marisolBoot .68s cubic-bezier(.2,.85,.25,1) both; }
+:root[data-theme="gta"] .page-exit { animation: marisolExit .2s steps(2,end) both; }
+@keyframes marisolBoot { 0% { opacity: 0; transform: translateY(18px) scale(.99); clip-path: polygon(0 0,0 0,0 100%,0 100%); } 70% { opacity: 1; transform: translateY(-3px); } 100% { opacity: 1; transform: none; clip-path: polygon(0 0,100% 0,100% 100%,0 100%); } }
+@keyframes marisolExit { 0% { filter: none; transform: none; } 50% { filter: drop-shadow(3px 0 #00e9ff) drop-shadow(-3px 0 #ff365e); transform: translateX(-8px) skewX(-2deg); } 100% { opacity: .2; transform: translateX(-18px); } }
+@keyframes marisolGlitch { 0%,100% { transform: translate(0); } 25% { transform: translate(2px,-1px) rotate(-.5deg); } 50% { transform: translate(-2px,1px) rotate(.5deg); } }
+@keyframes marisolTicker { to { transform: translateX(-50%); } }
+@keyframes marisolCardIn { from { opacity: 0; transform: translateY(18px) scale(.98); } 75% { opacity: 1; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+:root[data-theme="gta"] #route-wipe { position: fixed; z-index: 120; inset: 0; pointer-events: none; opacity: 0; background: linear-gradient(125deg,#ff2e88,#ff6b4a 55%,#ffa24c); clip-path: polygon(0 0,0 0,0 0,0 0); }
+:root[data-theme="gta"] #route-wipe.active { opacity: 1; animation: marisolWipe .6s cubic-bezier(.7,0,.2,1) both; }
+@keyframes marisolWipe { 0% { clip-path: polygon(0 0,0 0,0 0,0 0); } 45% { clip-path: polygon(0 0,100% 0,0 100%,0 100%); } 100% { clip-path: polygon(0 0,100% 0,100% 100%,0 100%); } }
+:root[data-theme="gta"][data-after-dark="true"] {
+  --ink: #f7f3ec; --slate: #c4b6c3; --mist: #100b1b; --surface: #1c1329; --surface-2: #261833;
+  --line: #654166; --teal: #0b2a3b; --brass: #ffa24c; --pink: #ff2e88;
+}
+:root[data-theme="gta"][data-after-dark="true"] body { background: radial-gradient(ellipse at 75% -10%,#ff2e8830,transparent 38rem),linear-gradient(145deg,#100b1b,#0b2a3b 72%,#160d22); color: #f7f3ec; }
+:root[data-theme="gta"][data-after-dark="true"] .topbar { background: rgba(10,7,17,.97); border-bottom-color: #ff6b4a; }
+:root[data-theme="gta"][data-after-dark="true"] .hero { background: linear-gradient(112deg,#160d28,#7c1c59 48%,#bd493f 78%,#a85f32); border-color: #ffa24c; box-shadow: 8px 8px 0 #030409; }
+:root[data-theme="gta"][data-after-dark="true"] #results { background: #171220; color: #f7f3ec; border-color: #ffa24c; box-shadow: 8px 8px 0 #030409; }
+:root[data-theme="gta"][data-after-dark="true"] #results .meta { color: #c4b6c3; }
+:root[data-theme="gta"][data-after-dark="true"] .plaque { background: #21172d; color: #f7f3ec; border-color: #ffa24c; box-shadow: 7px 7px 0 #030409; }
+:root[data-theme="gta"][data-after-dark="true"] .plaque h3 { color: #ffa24c; }
+:root[data-theme="gta"][data-after-dark="true"] .plaque .meta,
+:root[data-theme="gta"][data-after-dark="true"] .plaque .price small { color: #c4b6c3; }
+:root[data-theme="gta"][data-after-dark="true"] .plaque .price { border-top-color: #60445f; }
+:root[data-theme="gta"][data-after-dark="true"] .plaque .price strong { color: #ff85b5; }
+:root[data-theme="gta"][data-after-dark="true"] .panel,
+:root[data-theme="gta"][data-after-dark="true"] .notice,
+:root[data-theme="gta"][data-after-dark="true"] .kpis,
+:root[data-theme="gta"][data-after-dark="true"] .table-wrap,
+:root[data-theme="gta"][data-after-dark="true"] .summary,
+:root[data-theme="gta"][data-after-dark="true"] .profile-card,
+:root[data-theme="gta"][data-after-dark="true"] .profile-stat { background: #1c1329; color: #f7f3ec; border-color: #654166; box-shadow: 5px 5px 0 #030409; }
+:root[data-theme="gta"][data-after-dark="true"] .dlg-body { color: #f7f3ec; }
+:root[data-theme="gta"][data-after-dark="true"] .dlg-body .meta { color: #c4b6c3; }
+:root[data-theme="gta"][data-after-dark="true"] .profile-cover { background: linear-gradient(115deg,#180d2c,#842052 53%,#af503e); border-color: #ffa24c; }
+:root[data-theme="gta"][data-after-dark="true"] input,
+:root[data-theme="gta"][data-after-dark="true"] select,
+:root[data-theme="gta"][data-after-dark="true"] textarea { color: #f7f3ec; background: #100b1b; border-color: #815477; }
+:root[data-theme="gta"] .system-status { display: none; }
+@media (min-width: 950px) { :root[data-theme="gta"] .system-status { display: inline-flex; } }
+@media (max-width: 760px) {
+  :root[data-theme="gta"] .topbar { align-items: flex-start; }
+  :root[data-theme="gta"] #nav { width: 100%; gap: .25rem .35rem; }
+  :root[data-theme="gta"] #nav a, :root[data-theme="gta"] #nav button { padding: .38rem .45rem; font-size: .75rem; }
+  :root[data-theme="gta"] .hero { padding: 1.35rem 1rem 5rem; min-height: 0; }
+  :root[data-theme="gta"] .hero h1 { font-size: clamp(2.7rem,14vw,4.7rem); }
+  :root[data-theme="gta"] .mobile-search-trigger { display: block; position: fixed; z-index: 95; right: 1rem; bottom: 1rem; border-radius: 999px; padding: .8rem 1.2rem; }
+  :root[data-theme="gta"] .searchbar { position: fixed; z-index: 94; left: .6rem; right: .6rem; bottom: .6rem; display: grid; grid-template-columns: 1fr 1fr; gap: .65rem; margin: 0; max-height: 80vh; overflow: auto; transform: translateY(calc(100% + 2rem)); transition: transform .38s cubic-bezier(.18,.9,.22,1); }
+  :root[data-theme="gta"] .searchbar.is-open { transform: translateY(0); }
+  :root[data-theme="gta"] .searchbar .field { min-width: 0; }
+  :root[data-theme="gta"] .searchbar .btn { grid-column: 1 / -1; width: 100%; }
+  :root[data-theme="gta"] .nights { grid-column: 1 / -1; }
+  :root[data-theme="gta"] .profile-content-grid { grid-template-columns: 1fr; }
+  :root[data-theme="gta"] .profile-stats { grid-template-columns: 1fr; }
+  :root[data-theme="gta"] .room-image { height: 180px; }
+}
+@media (max-width: 520px) {
+  :root[data-theme="gta"] .searchbar { grid-template-columns: 1fr; }
+  :root[data-theme="gta"] .searchbar .btn { grid-column: auto; }
+  :root[data-theme="gta"] .profile-identity { align-items: flex-start; flex-wrap: wrap; margin-top: 2rem; }
+  :root[data-theme="gta"] .profile-role-badge { margin-left: 0; }
+  :root[data-theme="gta"] .hero::after { opacity: .4; right: -9rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme="gta"] #app.page-enter, :root[data-theme="gta"] .plaque,
+  :root[data-theme="gta"] .marquee-track, :root[data-theme="gta"] #route-wipe.active { animation: none !important; transition: none !important; }
+}
+
+:root[data-theme="gta"] .booking-steps { display:flex; flex-wrap:wrap; gap:.45rem; margin-bottom:1rem; }
+:root[data-theme="gta"] .booking-steps span { flex:1 1 7rem; padding:.55rem .65rem; border:1px solid #bda69f; border-radius:999px; color:#514a50; font:800 .62rem "Inter",sans-serif; text-align:center; }
+:root[data-theme="gta"] .booking-steps .active { color:#fffaf3; background:#3b1a5a; border-color:#3b1a5a; box-shadow:3px 3px 0 #ff2e88; }
+:root[data-theme="gta"] .booking-steps .done { color:#075d4b; background:#d8f2e9; border-color:#8dbeb0; }
+:root[data-theme="gta"][data-after-dark="true"] .booking-steps span { color:#c4b6c3; border-color:#654166; }
+:root[data-theme="gta"][data-after-dark="true"] .booking-steps .active { color:#fffaf3; background:#7c1c59; border-color:#ff6b4a; }
+:root[data-theme="gta"][data-after-dark="true"] .booking-steps .done { color:#b7f1df; background:#164b43; border-color:#337a69; }

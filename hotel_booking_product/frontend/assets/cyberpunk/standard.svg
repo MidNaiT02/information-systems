@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 540" role="img" aria-label="Original cyberpunk standard room illustration">
+<defs>
+ <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#090a0f"/><stop offset="1" stop-color="#172638"/></linearGradient>
+ <linearGradient id="win" x2="0" y2="1"><stop stop-color="#17142b"/><stop offset=".55" stop-color="#172e45"/><stop offset="1" stop-color="#090a0f"/></linearGradient>
+ <filter id="glow"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<rect width="900" height="540" fill="url(#bg)"/>
+<path d="M0 0H900V540H0Z" fill="none" stroke="#00ffff" stroke-width="4" opacity=".75"/>
+<path d="M60 42H840V420H60Z" fill="#0c111c" stroke="#00ffff" stroke-width="5"/>
+<path d="M96 76H804V378H96Z" fill="url(#win)" stroke="#ffff00" stroke-width="3"/>
+<g opacity=".95"><path d="M112 320L174 218H222L278 320Z" fill="#111c2b" stroke="#00ffff" stroke-width="3"/><path d="M290 320L359 156H410L472 320Z" fill="#101d2c" stroke="#ff00ff" stroke-width="3"/><path d="M484 320L548 205H604L665 320Z" fill="#111c2b" stroke="#00ffff" stroke-width="3"/><path d="M670 320L722 242H785V320Z" fill="#101d2c" stroke="#ff00ff" stroke-width="3"/></g>
+<g stroke="#00ffff" opacity=".7"><path d="M128 277H772M128 300H772M210 90V360M690 90V360"/><path d="M128 330H772" stroke-width="5"/></g>
+<path d="M100 380H800L855 488H45Z" fill="#121a28" stroke="#ffff00" stroke-width="4"/>
+<path d="M190 370H610L700 460H110Z" fill="#17283b" stroke="#00ffff" stroke-width="6" filter="url(#glow)"/>
+<path d="M220 354H580L620 400H180Z" fill="#24374a" stroke="#ff00ff" stroke-width="4"/>
+<path d="M180 460H720" stroke="#ffff00" stroke-width="15" filter="url(#glow)"/>
+<g fill="#00ffff" font-family="monospace" letter-spacing="8"><text x="95" y="505" font-size="19">NIGHT CITY / HOTEL SUITE</text><text x="750" y="505" font-size="24" text-anchor="end">01</text></g>
+<g stroke="#ff00ff" stroke-width="3" fill="none"><path d="M25 25H175M25 25V95M875 25H725M875 25V95M25 515H175M25 515V445M875 515H725M875 515V445"/></g>
+</svg>

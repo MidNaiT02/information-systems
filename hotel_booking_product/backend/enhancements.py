@@ -7,6 +7,10 @@ ADDONS = {"breakfast": ("Breakfast", 6000), "airport_transfer": ("Airport transf
 
 def init(conn):
     conn.executescript('''
+    CREATE TABLE IF NOT EXISTS demo_loyalty_profiles (
+      guest_id INTEGER PRIMARY KEY REFERENCES guests(guest_id) ON DELETE CASCADE,
+      simulated_completed_stays INTEGER NOT NULL CHECK(simulated_completed_stays >= 0)
+    );
     CREATE TABLE IF NOT EXISTS reservation_addons (
       reservation_id INTEGER NOT NULL REFERENCES reservations(reservation_id), addon_key TEXT NOT NULL,
       quantity INTEGER NOT NULL DEFAULT 1, unit_price REAL NOT NULL, PRIMARY KEY(reservation_id, addon_key));
@@ -28,9 +32,30 @@ def init(conn):
     conn.execute("UPDATE reservations SET base_total=total_price WHERE base_total=0 AND total_price>0")
 
 def loyalty(conn, guest_id):
-    n=conn.execute("SELECT COUNT(*) FROM reservations WHERE guest_id=? AND status='Completed'",(guest_id,)).fetchone()[0]
+    demo = conn.execute("SELECT simulated_completed_stays FROM demo_loyalty_profiles WHERE guest_id=?",(guest_id,)).fetchone()
+    if demo:
+        actual = conn.execute("SELECT COUNT(*) FROM reservations WHERE guest_id=? AND status='Completed'",(guest_id,)).fetchone()[0]
+        # Demo presets establish the starting example tier, while later real stays can
+        # still move that account forward instead of freezing its progress forever.
+        n = max(int(demo["simulated_completed_stays"]), int(actual))
+    else:
+        n=conn.execute("SELECT COUNT(*) FROM reservations WHERE guest_id=? AND status='Completed'",(guest_id,)).fetchone()[0]
     for threshold,name,discount in TIERS:
         if n>=threshold: return {'completed_stays':n,'tier':name,'discount_percent':discount}
+
+def loyalty_progress(conn, guest_id):
+    """Return the member's current level and the exact number of stays to the next one."""
+    membership = loyalty(conn, guest_id)
+    ascending = list(reversed(TIERS))
+    next_level = next((item for item in ascending if item[0] > membership['completed_stays']), None)
+    if next_level is None:
+        return {**membership, 'next_tier': None, 'next_threshold': None,
+                'stays_to_next': 0, 'progress_percent': 100, 'is_max_tier': True}
+    threshold, next_name, _discount = next_level
+    return {**membership, 'next_tier': next_name, 'next_threshold': threshold,
+            'stays_to_next': threshold - membership['completed_stays'],
+            'progress_percent': min(100, round(membership['completed_stays'] / threshold * 100)),
+            'is_max_tier': False}
 
 def refund_percent(check_in, now=None):
     """Policy: 4+ days=100%; 2-3 days=95%; 1 day=90%; check-in day=80%; after check-in=0%."""
@@ -52,11 +77,10 @@ def refund_preview(conn, reservation_id, now=None):
     return policy
 
 def loyalty_counts(conn):
-    rows=conn.execute("SELECT g.guest_id, COUNT(r.reservation_id) n FROM guests g LEFT JOIN reservations r ON r.guest_id=g.guest_id AND r.status='Completed' GROUP BY g.guest_id").fetchall()
+    rows=conn.execute("SELECT guest_id FROM guests").fetchall()
     counts={'Silver':0,'Gold':0,'Platinum':0,'None':0}
     for row in rows:
-        tier=next(name for threshold,name,pct in TIERS if row['n']>=threshold)
-        counts[tier]+=1
+        counts[loyalty(conn,row['guest_id'])['tier']]+=1
     return {'members':counts,'total_guests':len(rows)}
 
 def create_ticket(conn, room_id, reason, start, end):

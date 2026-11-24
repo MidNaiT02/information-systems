@@ -3,11 +3,12 @@ import json
 import mimetypes
 import os
 import re
+import secrets
 import sqlite3
 import sys
 import time
 import traceback
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from http import HTTPStatus
 from http.cookies import SimpleCookie
 from socketserver import ThreadingMixIn
@@ -17,9 +18,12 @@ from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 import db
 import features
 import security
+import enhancements
+
 
 FRONTEND = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend")
 COOKIE = "session"
+GUEST_COOKIE = "guest_session"
 MAX_BODY = 100_000
 LOGIN_LIMIT, LOGIN_WINDOW = 5, 300          # 5 wrong passwords, then 5 minutes pause
 _failed = {}                                 # email -> list of timestamps
@@ -29,7 +33,7 @@ SECURITY_HEADERS = [
     ("Referrer-Policy", "no-referrer"),
     ("X-Frame-Options", "DENY"),
     ("Content-Security-Policy",
-     "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self' https://cdnjs.cloudflare.com; "
+     "default-src 'self'; img-src 'self' data:; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' https://cdnjs.cloudflare.com; "
      "base-uri 'none'; form-action 'self'; frame-ancestors 'none'"),
 ]
 
@@ -43,7 +47,8 @@ class Ctx:
         self.today = date.today()
         self.now = datetime.now()
         self.cookies = []          # extra Set-Cookie headers
-        self.token = None          # the session token of this request, if any
+        self.token = None          # staff session token, if any
+        self.guest_token = None
 
     def q(self, name, default=""):
         return self.query.get(name, [default])[0]
@@ -63,18 +68,36 @@ def api_search(c):
     ci, co = c.q("check_in"), c.q("check_out")
     ci, co, _ = db.parse_dates(ci, co)
     db.require_not_past(ci, c.today)
+    try:
+        guest_count = int(c.q("guests", "1"))
+    except (TypeError, ValueError):
+        raise db.BookingError("Enter a valid number of guests.", 400, "bad_guest_count")
+    if guest_count < 1 or guest_count > 8:
+        raise db.BookingError("Guest count must be between 1 and 8.", 400, "bad_guest_count")
     rooms, nights = db.search_free_rooms(c.conn, ci, co)
-    return 200, {"check_in": ci, "check_out": co, "nights": nights, "rooms": rooms}
+    rooms = [room for room in rooms if int(room.get("capacity", 1)) >= guest_count]
+    return 200, {"check_in": ci, "check_out": co, "nights": nights, "guest_count": guest_count, "rooms": rooms}
 
 
 def api_book(c):
     b = c.body
     ci, co, _ = db.parse_dates(b.get("check_in", ""), b.get("check_out", ""))
     db.require_not_past(ci, c.today)
+    guest_id = None
+    full_name, phone, email = b.get("full_name", ""), b.get("phone", ""), b.get("email", "")
+    if c.user and c.user.get("role") == "Guest":
+        # A signed-in guest's reservation must belong to their account, not just their email text.
+        guest_id = c.user["guest_id"]
+        account_guest = c.conn.execute(
+            "SELECT full_name, phone, email FROM guests WHERE guest_id=?", (guest_id,)
+        ).fetchone()
+        if account_guest is None:
+            raise db.BookingError("Your guest account could not be found. Please sign in again.", 401, "login_required")
+        full_name, phone, email = account_guest["full_name"], account_guest["phone"], account_guest["email"]
     try:
         res = db.book_room(c.conn, b.get("room_id"), ci, co, str(b.get("method", "")),
-                           b.get("full_name", ""), b.get("phone", ""), b.get("email", ""),
-                           simulate_payment_failure=bool(b.get("simulate_payment_failure")), add_ons=b.get("add_ons", []))
+                           full_name, phone, email, guest_id=guest_id,
+                           simulate_payment_failure=bool(b.get("simulate_payment_failure")), add_ons=b.get("add_ons", []), guest_count=b.get("guest_count", 1))
     except db.BookingError as e:
         if e.code == "room_unavailable":
             db.audit(c.conn, "guest", "double_booking_blocked", f"room {b.get('room_id')} {ci} to {co}")
@@ -92,58 +115,24 @@ def api_book(c):
     return 201, res
 
 
-def api_lookup(c):
-    """Guest lookup accepts any one credential: QR pass code, reservation number, OR email."""
-    code = str(c.body.get("pass_code") or c.body.get("code") or "").strip()
-    rid = str(c.body.get("reservation_id") or "").strip()
-    email = str(c.body.get("email") or "").strip()
-    if not any((code, rid, email)):
-        raise db.BookingError("Enter a QR pass code, reservation number, or email.", 400, "missing_lookup")
-
-    if code:
-        reservation_id = features.resolve_pass(c.conn, code)
-        d = db.reservation_detail(c.conn, reservation_id, c.now)
-        d.pop("phone", None)
-        rows = [d]
-    elif rid:
-        try:
-            reservation_id = int(rid)
-        except ValueError:
-            raise db.BookingError("Reservation number must contain digits only.", 400, "bad_reservation_number")
-        d = db.reservation_detail(c.conn, reservation_id, c.now)
-        if d is None:
-            raise db.BookingError("No reservation found for this number.", 404, "not_found")
-        d.pop("phone", None)
-        rows = [d]
-    else:
-        found = c.conn.execute("SELECT reservation_id FROM reservations r JOIN guests g USING(guest_id) WHERE lower(g.email)=lower(?) ORDER BY r.created_at DESC", (email,)).fetchall()
-        rows = []
-        for item in found:
-            d = db.reservation_detail(c.conn, item["reservation_id"], c.now)
-            if d:
-                d.pop("phone", None)
-                rows.append(d)
-        if not rows:
-            raise db.BookingError("No reservations found for this email.", 404, "not_found")
-
-    for d in rows:
-        d["pass"] = features.pass_for(c.conn, d["reservation_id"]) if d["status"] in ("Confirmed", "Completed") else None
-    if email and (code or rid):
-        # Additional email is an optional filter when supplied with another identifier.
-        rows = [d for d in rows if d.get("email", "").lower() == email.lower()]
-        if not rows:
-            raise db.BookingError("No reservation matches the supplied details.", 404, "not_found")
-    return 200, rows[0] if code or rid else {"reservations": rows}
-
-
 def api_price_calendar(c):
     return 200, features.price_calendar(c.conn, c.q("check_in"), c.q("check_out"), c.q("flex", "3"), c.today)
 
 
 def api_guest_cancel(c):
-    d = db.find_guest_reservation(c.conn, c.body.get("reservation_id"), c.body.get("email", ""), c.now)
-    result = db.cancel_reservation(c.conn, d["reservation_id"], "Guest", c.now)
-    db.audit(c.conn, "guest", "cancel", f"reservation {d['reservation_id']}")
+    """A guest may cancel only a reservation owned by the signed-in account."""
+    try:
+        reservation_id = int(c.body.get("reservation_id"))
+    except (TypeError, ValueError):
+        raise db.BookingError("Enter a valid reservation number.", 400, "bad_reservation_number")
+    owned = c.conn.execute(
+        "SELECT 1 FROM reservations WHERE reservation_id=? AND guest_id=?",
+        (reservation_id, c.user["guest_id"])
+    ).fetchone()
+    if not owned:
+        raise db.BookingError("No reservation found for this account.", 404, "not_found")
+    result = db.cancel_reservation(c.conn, reservation_id, "Guest", c.now)
+    db.audit(c.conn, c.user["email"], "guest_cancel", f"reservation {reservation_id}")
     return 200, result
 
 
@@ -171,6 +160,7 @@ def _throttled(email):
 
 
 def api_login(c):
+    security.end_guest_session(c.conn, c.guest_token)
     email = str(c.body.get("email", "")).strip().lower()
     password = str(c.body.get("password", ""))
     if _throttled(email):
@@ -186,23 +176,235 @@ def api_login(c):
     if os.environ.get("COOKIE_SECURE") == "1":
         flags += "; Secure"
     c.cookies.append(f"{COOKIE}={token}{flags}")
+    c.cookies.append(f"{GUEST_COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0")
     db.audit(c.conn, row["email"], "login", "")
     return 200, {"user": {"name": row["full_name"], "role": row["role"], "email": row["email"],
                           "default_password": uses_default_password(c.conn, row["staff_id"])}, "csrf": csrf}
 
 
-def api_logout(c):
+def _guest_profile(conn, guest_id, name, email, phone=""):
+    membership = enhancements.loyalty_progress(conn, guest_id)
+    return {"name": name, "role": "Guest", "email": email, "phone": phone or "",
+            "loyalty_tier": membership["tier"], "loyalty_discount": membership["discount_percent"],
+            "completed_stays": membership["completed_stays"],
+            "loyalty_progress": {k: membership[k] for k in
+                ("next_tier", "next_threshold", "stays_to_next", "progress_percent", "is_max_tier")}}
+
+
+def api_guest_reservations(c):
+    """Return every reservation belonging to the signed-in guest account."""
+    if not c.user or c.user.get("role") != "Guest":
+        raise db.BookingError("Sign in with your guest account to view your reservations.", 401, "login_required")
+    db.complete_past_reservations(c.conn)
+    ids = c.conn.execute(
+        "SELECT reservation_id FROM reservations WHERE guest_id=? ORDER BY check_in DESC, reservation_id DESC",
+        (c.user["guest_id"],)
+    ).fetchall()
+    reservations = []
+    for row in ids:
+        item = db.reservation_detail(c.conn, row["reservation_id"], c.now)
+        if item:
+            item["pass"] = features.pass_for(c.conn, item["reservation_id"]) if item["status"] in ("Confirmed", "Completed") else None
+            reservations.append(item)
+    profile = _guest_profile(c.conn, c.user["guest_id"], c.user["name"], c.user["email"], c.user.get("phone", ""))
+    return 200, {"reservations": reservations, "count": len(reservations), "user": profile}
+
+
+def api_guest_register(c):
+    """Create a guest account immediately; no email-verification step is required."""
+    name = str(c.body.get("full_name", "")).strip()
+    phone = str(c.body.get("phone", "")).strip()
+    email = str(c.body.get("email", "")).strip().lower()
+    password = str(c.body.get("password", ""))
+    if len(name) < 2 or len(name) > 100:
+        raise db.BookingError("Enter your full name (2–100 characters).", 400, "bad_name")
+    if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email) or len(email) > 100:
+        raise db.BookingError("Enter a valid email address.", 400, "bad_email")
+    if not phone or len(phone) > 20:
+        raise db.BookingError("Enter a valid phone number (up to 20 characters).", 400, "bad_phone")
+    problem = security.password_problem(password, email)
+    if problem:
+        raise db.BookingError(problem, 400, "weak_password")
+    if c.conn.execute("SELECT 1 FROM staff WHERE lower(email)=lower(?)", (email,)).fetchone():
+        raise db.BookingError("This email is reserved for a staff account.", 409, "email_in_use")
+    if c.conn.execute("SELECT 1 FROM guest_accounts a JOIN guests g USING(guest_id) WHERE lower(g.email)=lower(?)", (email,)).fetchone():
+        raise db.BookingError("An account already exists for this email. Please log in.", 409, "account_exists")
+
+    # Without proving email ownership, never attach an account to an old booking
+    # that was created before the guest registered. That would allow account takeover.
+    existing_guest = c.conn.execute("SELECT guest_id FROM guests WHERE lower(email)=lower(?)", (email,)).fetchone()
+    if existing_guest:
+        raise db.BookingError(
+            "This email is already attached to a reservation created before an account existed. Please contact the front desk to link that reservation to your account.",
+            409, "existing_booking_needs_staff_link")
+
+    if _throttled("register:" + email):
+        raise db.BookingError("Too many registration attempts. Try again in 5 minutes.", 429, "too_many_attempts")
+    _failed.setdefault("register:" + email, []).append(time.time())
+    salt, password_digest = security.hash_password(password)
+    # Switching to a guest account must not leave a staff session active in the same browser.
+    security.end_session(c.conn, c.token)
+    security.end_guest_session(c.conn, c.guest_token)
+    c.cookies.append(f"{COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0")
+    guest_id = c.conn.execute(
+        "INSERT INTO guests(full_name,phone,email) VALUES (?,?,?)", (name, phone, email)
+    ).lastrowid
+    account_id = c.conn.execute(
+        "INSERT INTO guest_accounts(guest_id,salt,password_hash) VALUES (?,?,?)",
+        (guest_id, salt, password_digest)
+    ).lastrowid
+    token, csrf = security.new_guest_session(c.conn, account_id)
+    flags = "; HttpOnly; SameSite=Lax; Path=/; Max-Age=%d" % (security.SESSION_HOURS * 3600)
+    if os.environ.get("COOKIE_SECURE") == "1":
+        flags += "; Secure"
+    c.cookies.append(f"{GUEST_COOKIE}={token}{flags}")
+    db.audit(c.conn, email, "guest_register", "account created without email verification")
+    return 201, {"user": _guest_profile(c.conn, guest_id, name, email, phone), "csrf": csrf}
+
+
+def api_guest_login(c):
     security.end_session(c.conn, c.token)
     c.cookies.append(f"{COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0")
+    email = str(c.body.get("email", "")).strip().lower()
+    password = str(c.body.get("password", ""))
+    if _throttled("guest:" + email):
+        raise db.BookingError("Too many wrong passwords. Try again in 5 minutes.", 429, "too_many_attempts")
+    row = security.check_guest_login(c.conn, email, password)
+    if row is None:
+        _failed.setdefault("guest:" + email, []).append(time.time())
+        raise db.BookingError("Wrong email or password.", 401, "bad_login")
+    _failed.pop("guest:" + email, None)
+    token, csrf = security.new_guest_session(c.conn, row["account_id"])
+    flags = "; HttpOnly; SameSite=Lax; Path=/; Max-Age=%d" % (security.SESSION_HOURS * 3600)
+    if os.environ.get("COOKIE_SECURE") == "1": flags += "; Secure"
+    c.cookies.append(f"{GUEST_COOKIE}={token}{flags}")
+    db.audit(c.conn, email, "guest_login", "")
+    return 200, {"user": _guest_profile(c.conn, row["guest_id"], row["full_name"], row["email"], row["phone"]), "csrf": csrf}
+
+def api_guest_password_reset_request(c):
+    email = str(c.body.get("email", "")).strip().lower()
+    if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email) or len(email) > 100:
+        raise db.BookingError("Enter a valid email address.", 400, "bad_email")
+    if _throttled("reset:" + email):
+        raise db.BookingError("Too many recovery requests. Try again in 5 minutes.", 429, "too_many_attempts")
+    _failed.setdefault("reset:" + email, []).append(time.time())
+    if not os.environ.get("SMTP_HOST"):
+        raise db.BookingError("Password recovery requires email delivery. Configure SMTP_HOST first.", 503, "smtp_not_configured")
+    account = c.conn.execute("SELECT a.account_id FROM guest_accounts a JOIN guests g USING(guest_id) WHERE lower(g.email)=lower(?)", (email,)).fetchone()
+    # Return the same response whether or not the account exists.
+    if account:
+        code = f"{secrets.randbelow(100_000_000):08d}"
+        code_salt, code_digest = security.hash_password(code)
+        expires = (c.now + timedelta(minutes=10)).strftime("%Y-%m-%d %H:%M:%S")
+        c.conn.execute("""INSERT INTO guest_password_resets(email,code_salt,code_hash,expires_at,attempts)
+            VALUES (?,?,?,?,0) ON CONFLICT(email) DO UPDATE SET code_salt=excluded.code_salt,
+            code_hash=excluded.code_hash,expires_at=excluded.expires_at,attempts=0,created_at=datetime('now')""",
+            (email, code_salt, code_digest, expires))
+        try:
+            db.send_transactional_email(email, "Reset your hotel account password",
+                f"Your password reset code is: {code}\n\nIt expires in 10 minutes. If you did not request this, ignore this message.")
+        except Exception:
+            c.conn.execute("DELETE FROM guest_password_resets WHERE lower(email)=lower(?)", (email,))
+            raise db.BookingError("The recovery email could not be sent. Check SMTP settings and try again.", 503, "email_delivery_failed")
+    return 200, {"message": "If an account exists for this email, a recovery code has been sent."}
+
+
+def api_guest_password_reset_confirm(c):
+    email = str(c.body.get("email", "")).strip().lower()
+    code = str(c.body.get("code", "")).strip()
+    new = str(c.body.get("new_password", ""))
+    problem = security.password_problem(new, email)
+    if problem:
+        raise db.BookingError(problem, 400, "weak_password")
+    row = c.conn.execute("SELECT * FROM guest_password_resets WHERE lower(email)=lower(?)", (email,)).fetchone()
+    if row is None or row["expires_at"] < c.now.strftime("%Y-%m-%d %H:%M:%S") or row["attempts"] >= 5:
+        raise db.BookingError("The recovery code is invalid or expired. Request a new code.", 400, "reset_expired")
+    if not re.fullmatch(r"\d{8}", code) or not security.verify_password(code, row["code_salt"], row["code_hash"]):
+        c.conn.execute("UPDATE guest_password_resets SET attempts=attempts+1 WHERE lower(email)=lower(?)", (email,))
+        raise db.BookingError("The recovery code is incorrect.", 400, "bad_reset_code")
+    account = c.conn.execute("SELECT a.account_id FROM guest_accounts a JOIN guests g USING(guest_id) WHERE lower(g.email)=lower(?)", (email,)).fetchone()
+    if account is None:
+        c.conn.execute("DELETE FROM guest_password_resets WHERE lower(email)=lower(?)", (email,))
+        raise db.BookingError("The recovery code is invalid or expired. Request a new code.", 400, "reset_expired")
+    salt, digest = security.hash_password(new)
+    c.conn.execute("UPDATE guest_accounts SET salt=?,password_hash=? WHERE account_id=?", (salt, digest, account["account_id"]))
+    c.conn.execute("DELETE FROM guest_sessions WHERE account_id=?", (account["account_id"],))
+    c.conn.execute("DELETE FROM guest_password_resets WHERE lower(email)=lower(?)", (email,))
+    db.audit(c.conn, email, "guest_password_reset", "")
+    return 200, {"ok": True, "message": "Password reset. Sign in with your new password."}
+
+
+def api_logout(c):
+    security.end_session(c.conn, c.token)
+    security.end_guest_session(c.conn, c.guest_token)
+    c.cookies.append(f"{COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0")
+    c.cookies.append(f"{GUEST_COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0")
     return 200, {"ok": True}
 
 
 def api_me(c):
     if not c.user:
         return 200, {"user": None}
+    if c.user.get("role") == "Guest":
+        return 200, {"user": _guest_profile(c.conn, c.user["guest_id"], c.user["name"], c.user["email"], c.user.get("phone", "")),
+                     "csrf": c.user.get("csrf")}
     return 200, {"user": {"name": c.user["name"], "role": c.user["role"], "email": c.user["email"],
                           "default_password": uses_default_password(c.conn, c.user["staff_id"])},
                  "csrf": c.user["csrf"]}
+
+
+def api_account(c):
+    """Return the signed-in user's own profile for any supported role."""
+    if c.user.get("role") == "Guest":
+        row = c.conn.execute(
+            "SELECT g.guest_id, g.full_name, g.email, g.phone, a.created_at "
+            "FROM guests g JOIN guest_accounts a USING(guest_id) WHERE g.guest_id=?",
+            (c.user["guest_id"],)
+        ).fetchone()
+        if row is None:
+            raise db.BookingError("Your account could not be found. Please sign in again.", 404, "account_not_found")
+        user = {"account_id": row["guest_id"], "name": row["full_name"], "email": row["email"],
+                "phone": row["phone"], "role": "Guest", "created_at": row["created_at"]}
+        user.update({k: v for k, v in _guest_profile(
+            c.conn, row["guest_id"], row["full_name"], row["email"], row["phone"]
+        ).items() if k.startswith("loyalty_") or k in ("completed_stays",)})
+        return 200, {"user": user}
+
+    row = c.conn.execute(
+        "SELECT staff_id, full_name, email, role, phone FROM staff WHERE staff_id=?",
+        (c.user["staff_id"],)
+    ).fetchone()
+    if row is None:
+        raise db.BookingError("Your staff account could not be found. Please sign in again.", 404, "account_not_found")
+    return 200, {"user": {"account_id": row["staff_id"], "name": row["full_name"],
+                           "email": row["email"], "phone": row["phone"], "role": row["role"],
+                           "default_password": uses_default_password(c.conn, row["staff_id"])}}
+
+
+def api_update_account(c):
+    """Update only profile fields that are safe for the current user to edit."""
+    name = str(c.body.get("full_name", "")).strip()
+    if len(name) < 2 or len(name) > 100:
+        raise db.BookingError("Enter your full name (2–100 characters).", 400, "bad_name")
+
+    if c.user.get("role") == "Guest":
+        phone = str(c.body.get("phone", "")).strip()
+        if not phone or len(phone) > 20:
+            raise db.BookingError("Enter a valid phone number (up to 20 characters).", 400, "bad_phone")
+        c.conn.execute("UPDATE guests SET full_name=?, phone=? WHERE guest_id=?",
+                       (name, phone, c.user["guest_id"]))
+        db.audit(c.conn, c.user["email"], "guest_profile_updated", "name and phone updated")
+        return 200, {"user": _guest_profile(c.conn, c.user["guest_id"], name, c.user["email"], phone)}
+
+    phone = str(c.body.get("phone", "")).strip()
+    if phone and not re.fullmatch(r"[0-9+()\- ]{6,20}", phone):
+        raise db.BookingError("Enter a valid phone number (6–20 characters).", 400, "bad_phone")
+    c.conn.execute("UPDATE staff SET full_name=?, phone=? WHERE staff_id=?",
+                   (name, phone, c.user["staff_id"]))
+    db.audit(c.conn, c.user["email"], "staff_profile_updated", "name and phone updated")
+    return 200, {"user": {"name": name, "email": c.user["email"], "phone": phone,
+                           "role": c.user["role"],
+                           "default_password": uses_default_password(c.conn, c.user["staff_id"])}}
 
 
 def api_change_password(c):
@@ -217,6 +419,29 @@ def api_change_password(c):
             db.audit(c.conn, email, "password_change_failed", "")
         raise
     db.audit(c.conn, email, "password_changed", "")
+    return 200, {"ok": True}
+
+
+def api_change_guest_password(c):
+    email = c.user["email"].lower()
+    if _throttled("guest:" + email):
+        raise db.BookingError("Too many attempts. Try again in 5 minutes.", 429, "too_many_attempts")
+    row = c.conn.execute("SELECT salt,password_hash FROM guest_accounts WHERE account_id=?", (c.user["account_id"],)).fetchone()
+    current = str(c.body.get("current", ""))
+    new = str(c.body.get("new", ""))
+    if row is None or not security.verify_password(current, row["salt"], row["password_hash"]):
+        _failed.setdefault("guest:" + email, []).append(time.time())
+        raise db.BookingError("The current password is wrong.", 403, "wrong_password")
+    problem = security.password_problem(new, email)
+    if problem:
+        raise db.BookingError(problem, 400, "weak_password")
+    if new == current:
+        raise db.BookingError("Choose a password that is different from the current one.", 400, "same_password")
+    salt, digest = security.hash_password(new)
+    c.conn.execute("UPDATE guest_accounts SET salt=?, password_hash=? WHERE account_id=?",
+                   (salt, digest, c.user["account_id"]))
+    security.end_other_guest_sessions(c.conn, c.user["account_id"], c.guest_token)
+    db.audit(c.conn, email, "guest_password_changed", "")
     return 200, {"ok": True}
 
 
@@ -368,9 +593,22 @@ def api_staff_ticket_update(c):
 
 
 def api_guest_review(c):
-    b=c.body
-    try: return 201, enhancements.submit_review(c.conn,int(b.get("reservation_id")),b.get("pass_code",""),int(b.get("rating")),b.get("comment",""))
-    except (ValueError,TypeError,sqlite3.IntegrityError) as e: raise db.BookingError(str(e),400,"review_failed")
+    b = c.body
+    try:
+        rid = int(b.get("reservation_id"))
+    except (ValueError, TypeError):
+        raise db.BookingError("Enter a valid reservation number.", 400, "review_failed")
+    owned = c.conn.execute("SELECT 1 FROM reservations WHERE reservation_id=? AND guest_id=?",
+                           (rid, c.user["guest_id"])).fetchone()
+    if not owned:
+        raise db.BookingError("This reservation does not belong to your account.", 403, "forbidden")
+    pass_data = features.pass_for(c.conn, rid)
+    if not pass_data:
+        raise db.BookingError("Reservation not found.", 404, "not_found")
+    try:
+        return 201, enhancements.submit_review(c.conn, rid, pass_data["code"], int(b.get("rating")), b.get("comment", ""))
+    except (ValueError, TypeError, sqlite3.IntegrityError) as e:
+        raise db.BookingError(str(e), 400, "review_failed")
 
 
 def api_staff_reviews(c):
@@ -384,20 +622,26 @@ def api_staff_ratings(c):
 
 ROUTES = [  # method, regex, handler, access ("public", "staff", "manager")
     ("GET", r"/api/health", api_health, "public"),
+    ("GET", r"/api/guest/reservations", api_guest_reservations, "guest"),
     ("GET", r"/api/staff/loyalty", api_staff_loyalty, "staff"),
     ("GET", r"/api/staff/maintenance", api_staff_maintenance, "staff"),
     ("POST", r"/api/staff/maintenance", api_staff_maintenance, "staff"),
     ("POST", r"/api/staff/maintenance/(\d+)", api_staff_ticket_update, "staff"),
     ("GET", r"/api/staff/reviews", api_staff_reviews, "staff"),
     ("GET", r"/api/staff/room-ratings", api_staff_ratings, "staff"),
-    ("POST", r"/api/reviews", api_guest_review, "public"),
+    ("POST", r"/api/reviews", api_guest_review, "guest"),
     ("GET", r"/api/rooms/search", api_search, "public"),
-    ("POST", r"/api/bookings", api_book, "public"),
-    ("POST", r"/api/bookings/lookup", api_lookup, "public"),
-    ("POST", r"/api/bookings/cancel", api_guest_cancel, "public"),
+    ("POST", r"/api/bookings", api_book, "guest"),
+    ("POST", r"/api/bookings/cancel", api_guest_cancel, "guest"),
     ("POST", r"/api/auth/login", api_login, "public"),
+    ("POST", r"/api/auth/register", api_guest_register, "public"),
+    ("POST", r"/api/auth/guest-password-reset/request", api_guest_password_reset_request, "public"),
+    ("POST", r"/api/auth/guest-password-reset/confirm", api_guest_password_reset_confirm, "public"),
+    ("POST", r"/api/auth/guest-login", api_guest_login, "public"),
     ("POST", r"/api/auth/logout", api_logout, "public"),
     ("GET", r"/api/auth/me", api_me, "public"),
+    ("GET", r"/api/auth/account", api_account, "user"),
+    ("POST", r"/api/auth/account", api_update_account, "user"),
     ("GET", r"/api/staff/reservations", api_staff_reservations, "staff"),
     ("POST", r"/api/staff/reservations/(\d+)/cancel", api_staff_cancel, "staff"),
     ("POST", r"/api/staff/reservations/(\d+)/modify", api_staff_modify, "staff"),
@@ -413,6 +657,7 @@ ROUTES = [  # method, regex, handler, access ("public", "staff", "manager")
     ("GET", r"/api/staff/emails", api_staff_emails, "staff"),
     ("POST", r"/api/staff/emails/(\d+)/resend", api_staff_resend_email, "staff"),
     ("POST", r"/api/auth/password", api_change_password, "staff"),
+    ("POST", r"/api/auth/guest-password", api_change_guest_password, "guest"),
     ("GET", r"/api/manager/export.csv", api_manager_export, "manager"),
     ("GET", r"/api/manager/dashboard", api_manager_dashboard, "manager"),
     ("GET", r"/api/manager/audit", api_manager_audit, "manager"),
@@ -443,7 +688,11 @@ def _respond(start_response, status, payload, extra=None, content_type="applicat
 
 
 def _static(start_response, path):
-    rel = "index.html" if path in ("/", "") else path[len("/static/"):] if path.startswith("/static/") else None
+    rel = ("index.html" if path in ("/", "")
+           else "gta-vi.html" if path in ("/gta-vi", "/gta-vi/")
+           else "official.html" if path in ("/official", "/official/")
+           else "daltonism.html" if path in ("/daltonism", "/daltonism/")
+           else path[len("/static/"):] if path.startswith("/static/") else None)
     if rel is None:
         return None
     full = os.path.normpath(os.path.join(FRONTEND, rel))
@@ -505,17 +754,32 @@ def app(environ, start_response):
                 raise db.BookingError("The request must be a JSON object.", 400, "bad_json")
 
         token = _token(environ.get("HTTP_COOKIE"))
+        cookie_jar = SimpleCookie()
+        try: cookie_jar.load(environ.get("HTTP_COOKIE", ""))
+        except Exception: pass
+        guest_token = cookie_jar[GUEST_COOKIE].value if GUEST_COOKIE in cookie_jar else None
         user = security.get_session(conn, token)
+        if user is None:
+            user = security.get_guest_session(conn, guest_token)
+        if access == "user" and user is None:
+            raise db.BookingError("Sign in to view your account.", 401, "login_required")
+        if access == "user" and method == "POST" and environ.get("HTTP_X_CSRF_TOKEN") != user.get("csrf"):
+            raise db.BookingError("Security check failed. Reload the page and try again.", 403, "bad_csrf")
+        if access == "guest" and (user is None or user.get("role") != "Guest"):
+            raise db.BookingError("Sign in with your guest account to continue.", 401, "login_required")
         if access in ("staff", "manager"):
-            if user is None:
-                raise db.BookingError("Log in as staff first.", 401, "login_required")
+            if user is None or user.get("role") not in ("FrontDesk", "Manager"):
+                raise db.BookingError("Log in with a staff account first.", 401, "login_required")
             if access == "manager" and user["role"] != "Manager":
                 raise db.BookingError("Only the Manager role can open this.", 403, "forbidden")
             if method == "POST" and environ.get("HTTP_X_CSRF_TOKEN") != user["csrf"]:
                 raise db.BookingError("Security check failed. Reload the page and try again.", 403, "bad_csrf")
+        if access == "guest" and method == "POST" and environ.get("HTTP_X_CSRF_TOKEN") != user.get("csrf"):
+            raise db.BookingError("Security check failed. Reload the page and try again.", 403, "bad_csrf")
 
         ctx = Ctx(conn, method, path, parse_qs(environ.get("QUERY_STRING", "")), body, user, params)
         ctx.token = token
+        ctx.guest_token = guest_token
         result = handler(ctx)
         status, payload = result[0], result[1]
         options = result[2] if len(result) > 2 else {}
@@ -542,5 +806,12 @@ class QuietHandler(WSGIRequestHandler):
 
 
 def serve(host="127.0.0.1", port=8000):
+    if os.environ.get("APP_ENV", "development").lower() == "production":
+        try:
+            from waitress import serve as waitress_serve
+        except ImportError as exc:
+            raise RuntimeError("Production mode requires Waitress. Install it with: pip install -r requirements.txt") from exc
+        waitress_serve(app, host=host, port=port, threads=int(os.environ.get("WEB_THREADS", "8")))
+        return
     httpd = make_server(host, port, app, server_class=ThreadedServer, handler_class=QuietHandler)
     httpd.serve_forever()

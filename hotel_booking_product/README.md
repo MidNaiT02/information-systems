@@ -9,10 +9,14 @@ Team: Akzhigitov Abilkaiyr (24B032188), Kurbanaliyev Alibek (24B030184), Kabizha
 Problem it solves: guests were double-booked into the same room because staff checked availability by hand.
 Now the system checks the dates for you, and the database itself refuses an overlapping booking.
 
-## Run it (Python 3.8 or newer, nothing to install)
+## Run it locally (Python 3.8 or newer)
 
     py run.py                # Windows. On Mac or Linux: python3 run.py
     # open http://127.0.0.1:8000
+
+The local development mode creates fictional demo data. It does not print passwords to the console.
+For production, use `APP_ENV=production`, set unique staff password environment variables on every start, install `requirements.txt`,
+and follow `DEPLOYMENT.md`. The published demo passwords are rejected in production mode. Production mode creates an empty database and uses Waitress instead of the development WSGI server.
 
 The first start creates the database with demo data: 161 rooms (Standard 100, Deluxe 50, Suite 10, President 1),
 5,000 reservations spread over the 160 bookable rooms (room 105 is under maintenance), about 830 guests and 5,600 payments,
@@ -28,12 +32,31 @@ payments and refunds for the new stays are created too. If a database is already
 An existing database from an older version is upgraded automatically on start (the locked price per night is added),
 but it keeps its old 10 rooms. Use `--reset` to get the 161 rooms.
 
-Demo staff accounts (change the passwords before any real use, see "Settings"):
+Local development demo staff accounts only (never use these on a deployed system):
 
 | Role | Email | Password |
 |---|---|---|
 | Front desk | frontdesk@hotel.example | FrontDesk#2026 |
 | Manager | manager@hotel.example | Manager#2026 |
+
+## Guest accounts and visual themes
+
+Guests can create an account from **Sign in / Register** in the top navigation, or sign in to an existing guest account.
+Passwords are stored as PBKDF2-HMAC-SHA256 hashes with random salts; guest sessions use a separate HttpOnly cookie,
+CSRF token and are isolated from Front desk and Manager permissions. Guest registration creates the account immediately
+without an email-verification step. To prevent account takeover, registration will not attach an account to an older
+unclaimed reservation merely because the same email is entered; contact the front desk for help with a legacy booking.
+Guest password changes are available after sign-in; forgotten-password recovery uses an emailed one-time code and requires SMTP.
+Guests must sign in or register before booking. Each new reservation is linked to the signed-in guest account and appears
+in **My reservations**, where the owner can view details, manage eligible cancellations and submit a review. The separate
+QR check-in pass is shown on the confirmation and reservation details screens for front-desk use.
+
+Every signed-in role (Guest, Front desk and Manager) has a social-profile-inspired **Account** page with a cover banner,
+initials avatar, role badge, account stats, editable name and phone number, protected email and role fields, security controls,
+and shortcuts for the current role. All users can change their password from this page.
+
+
+The **Visual style / System interface** selector offers four responsive experiences that share the same application, API, database, accounts and role permissions: **Cyberpunk / NEON OASIS** at `/` (Kazakh-first corporate HUD), **GTA VI Style / THE MARISOL** at `/gta-vi` (Kazakh-first Miami/Vice City promo site with an independent After Dark toggle), **Official & Premium** at `/official` (English-first navy, white and gold corporate design), and **Daltonism-safe / High Accessibility** at `/daltonism` (English-first high-contrast blue/orange design with shape and text cues). All four styles use the same booking, guest, front-desk and manager functions, including the 1–8 guest capacity filter. The interface supports Kazakh, English and Russian, remembers the selected language, localizes dates and numbers, and respects the operating system's reduced-motion preference. Official mode uses a restrained fade/slide transition; the accessibility mode uses a gentle fade and disables decorative particles.
 
 ## What you can do
 
@@ -41,9 +64,12 @@ Demo staff accounts (change the passwords before any real use, see "Settings"):
 |---|---|---|
 | Guest | Rooms | Search free rooms for two dates, see the total number of free rooms and the number available per type, filter by Standard, Deluxe, Suite or President, book a room, see the reservation number |
 | Guest | Rooms, Flexible dates | Under the search results: the same number of nights starting up to 7 days earlier or later, with the price and free rooms per room type. The cheapest option is marked, "Use these dates" searches again |
-| Guest | Booking confirmation, My booking | A QR check-in pass and a pass code like `HB123-A1B2C3` (shown while the reservation is Confirmed) |
+| Guest | Booking confirmation, My reservations | Reservation history is available only after signing in; a keyed QR check-in pass is shown while Confirmed |
 | Guest, front desk, manager | Guide (button at the bottom right) | A small offline helper that explains where things are for the current role, opens the right page and answers a few live questions (free rooms tonight, dirty rooms, price suggestions). Rule based, no internet, nothing leaves the page |
-| Guest | My booking | Find a booking with its number and email, cancel it free of charge until 24 hours before check-in |
+| Guest | My reservations | Signed-in guests see their own reservation history and manage eligible cancellations. Booking requires a guest account |
+| Guest | Account | Profile banner and avatar, loyalty stats, editable name and phone, protected email, shortcuts and password controls |
+| Front desk, Manager | Account | Profile banner and avatar, staff ID and role, editable name and phone, protected email, role shortcuts and password controls |
+| Guest | Loyalty badge in the header | Open a progress view showing the exact number of completed stays needed for the next tier and the discount at each tier |
 | Front desk | Staff, Reservations | Works with all 5,000 records page by page (25, 50 or 100 rows). Filter by status, text and check-in dates, sort, change dates, cancel |
 | Front desk | Staff, Floor map | All 161 rooms by floor for any date: free, arriving, occupied, departing, maintenance, and an orange dot for dirty rooms. Click a room for its guest, the next booking and quick actions |
 | Front desk | Staff, Housekeeping | A room becomes Dirty when the guest checks out (or at 12:00 on the check-out day), then Clean, then Inspected. The board lists what to clean today, rooms with a guest arriving today first |
@@ -71,7 +97,7 @@ Types with fewer than 5 rooms (the President room) only use the sell-out rules. 
 
 ### Check-in pass, check-out and housekeeping
 
-The pass code is `HB<reservation number>-<6 characters>`, made from the reservation number, the guest's email and the booking time, so a code cannot be guessed from the number.
+The check-in pass is `HB<reservation number>-<32 hexadecimal characters>`. It is an HMAC derived using a random per-database secret, rather than guest details. Staff may still type a reservation number at the front desk if a legacy QR pass no longer validates after upgrading.
 The QR image is made by the server (`backend/qr.py`, standard library only). Check-in is possible from 14:00 rules: on the check-in date up to the day before check-out, only for Confirmed reservations.
 Check-out sets the room to Dirty. Rooms whose stay reaches 12:00 on the check-out day without a manual check-out become Dirty automatically.
 Order of room states: Dirty, then Clean, then Inspected (a room can be reported Dirty again from Clean or Inspected). Old databases get the new columns when the server starts.
@@ -113,15 +139,19 @@ Leaving on the day another guest arrives is allowed.
 - Passwords: at least 10 characters with letters and a digit. After a change every other login of that account is ended. Guessing the current password is limited like logging in.
 - CSV export is for managers only, written to the activity log, and cells that start with = + - or @ get an apostrophe so Excel cannot run them as formulas.
 - All SQL uses `?` placeholders (no SQL injection). All text shown in the browser is escaped (no script injection).
-- Content-Security-Policy, nosniff and frame protection headers. Guest lookup accepts a QR pass code, reservation number, or email independently as requested; cancellation additionally requires the booking email. Because reservation numbers and email addresses are not authentication secrets, use this OR lookup for a demo/prototype; production should add a one-time email verification link or OTP.
-- Card numbers are never asked for or stored. Payment is simulated.
+- Content-Security-Policy, nosniff and frame protection headers. Guest reservation history and cancellation are available only to the authenticated guest account that owns the reservation. New bookings require a guest account; staff use the separate QR check-in workflow.
+- QR check-in passes use a per-database secret and a 128-bit HMAC prefix. The secret is generated locally and stored in the database; do not copy the database into public repositories or shared folders.
+- Guest registration does not require email verification. Password recovery still uses an expiring eight-digit emailed code, stored as a salted hash and limited to five attempts; configure SMTP for recovery emails.
+- The project still does not integrate a real payment provider. Card numbers are never requested or stored; the Card/Cash/Transfer payment workflow is simulated and must not be used to collect real payments.
+- SQLite is appropriate for this small prototype. Its writes are serialized; for a larger multi-property or high-concurrency deployment, migrate to PostgreSQL and run load tests against the full HTTP application before promising a throughput target.
 
 ## Files
 
     run.py                   start the system
     backend/server.py        REST API, login, static files (WSGI)
     backend/db.py            business logic: search, booking, cancel, modify, dashboard
-    backend/security.py      password hashing and sessions
+    backend/security.py      password hashing, signed sessions and token digests
+    requirements.txt        production WSGI server dependency (Waitress)
     backend/schema.sql       tables, rules, triggers, reference data
     backend/features.py      floor map, housekeeping, pass and check-in, price calendar, price suggestions
     backend/qr.py            QR code encoder (standard library only)
@@ -205,24 +235,23 @@ A restore keeps the old database next to it as `.before_restore_<time>`. See DEP
 
 ## Added hotel features
 
-- **Loyalty:** completed stays determine the tier: Silver (2–4 stays, 5%), Gold (5–9, 8%), Platinum (10+, 12%). The tier and discount amount are stored on each new reservation so later tier changes do not alter old bookings. Staff can view guest counts by tier.
+- **Loyalty:** completed stays determine the tier: Silver (2–4 stays, 5%), Gold (5–9, 8%), Platinum (10+, 12%). Click the signed-in guest's loyalty badge to see the next tier and the exact number of completed stays remaining. The tier and discount amount are stored on each new reservation so later tier changes do not alter old bookings. Staff can view guest counts by tier.
 - **Booking extras:** breakfast (6,000 KZT), airport transfer (12,000 KZT), and late check-out (5,000 KZT) can be selected at booking. Each is recorded as a separate revenue category and shown in the manager dashboard.
-- **Languages:** EN/RU/KZ selector with a shared frontend dictionary. The dictionary is intentionally extensible; not every long-form screen paragraph has a translated entry yet.
+- **Languages:** Kazakh, English and Russian are available across the shared interface. The language preference persists between sessions; dates, times and numbers follow the selected locale. English is the initial language on Official and Daltonism-safe pages; Kazakh is the initial language on Cyberpunk and GTA VI pages unless a saved preference exists.
 - **QR webcam scanner:** the check-in page uses `html5-qrcode` and does not depend on the browser `BarcodeDetector` API. Camera access requires an internet connection for the CDN library, HTTPS or localhost, and browser permission.
-- **My Booking lookup:** guests can search with any one credential: QR pass code OR reservation number OR email. Searching by email returns all reservations for that email. Cancellation still asks for the booking email as an extra confirmation.
+- **My reservations:** guests must sign in before booking. Reservations are linked to the guest account and can be viewed, reviewed and cancelled according to the cancellation policy.
+
 - **Maintenance tickets:** staff can create tickets with a reason, start date, expected end date and status. Open/In Progress tickets block overlapping room searches and show a wrench marker on the floor map. Resolving/cancelling a ticket releases the date block.
-- **Guest reviews:** after a completed check-out, guests can submit a 1–5 rating and comment from My booking using the reservation pass code. Room search cards show room average ratings; staff can review comments and see 1–2 star reviews flagged.
+- **Guest reviews:** after a completed check-out, the signed-in reservation owner can submit a 1–5 rating and comment from My reservations. Room search cards show room average ratings; staff can review comments and see low ratings flagged.
 
-### Cancellation refund policy
+## Loyalty demo accounts
 
-The refund is calculated automatically from calendar days remaining until check-in:
+For testing the four guest membership tiers, see [DEMO_CLIENT_ACCOUNTS.md](DEMO_CLIENT_ACCOUNTS.md). The sample profiles are for local demonstration only and should be changed or removed before public deployment.
 
-| Days before check-in | Refund |
-|---|---:|
-| 4 days or more (including 7–4 days) | 100% |
-| 2–3 days | 95% |
-| 1 day | 90% |
-| Check-in day | 80% |
-| After check-in day | 0% |
+## Visual themes and loyalty profiles
 
-The 2–3 day percentage is an implementation default of 95%. The check-in-day refund is 80%; cancellations after check-in receive 0%. These rules are implemented in `backend/enhancements.py` (`refund_percent`).
+Choose one of four visual themes from the header: Official & Premium, Daltonism-safe / High Accessibility, GTA VI Style, or Cyberpunk. All themes share one set of booking and role-based application functions. The logged-in guest's loyalty tier (None, Silver, Gold, or Platinum) adds a separate accent and badge shape. The Daltonism-safe theme uses distinct shapes, patterns, labels and icons in addition to color, strong keyboard focus, large touch targets and reduced-motion behavior. Official and Daltonism-safe modes do not run decorative particle animations. Cyberpunk and GTA VI keep their own visual effects, which are disabled when the operating system requests reduced motion.
+
+## Optional The GTA VI Style experience
+
+A Kazakh-first GTA VI Style interface is available at `http://127.0.0.1:8000/gta-vi`. It uses the exact same frontend application, API client, account/session logic and backend routes as the default interface. This means guest booking, My Reservations, loyalty, account management, all front-desk and manager tools, housekeeping, QR check-in, reviews, reports and pricing controls are available in both interfaces. The existing Cyberpunk theme remains unchanged. Choose `GTA VI Style` in the System Interface selector to use the alternate visual skin; its separate `AFTER DARK` button toggles the nighttime palette without changing the selected theme. See `GTA_VI_STYLE.md` for details.

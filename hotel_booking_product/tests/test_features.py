@@ -56,8 +56,8 @@ class FeatureBase(Base):
 
     def book_today(self, nights=1, type_name="Suite", email="today@example.kz"):
         room = self.free_room(iso(0), iso(nights), type_name)
-        status, data, _ = call("POST", "/api/bookings", {"room_id": room["room_id"], "check_in": iso(0), "check_out": iso(nights),
-                                                        "full_name": "Today Guest", "phone": "+77001112233", "email": email, "method": "Card"})
+        room_number = self.conn.execute("SELECT room_number FROM rooms WHERE room_id=?", (room["room_id"],)).fetchone()[0]
+        status, data, _ = self.book(room=room_number, ci=iso(0), co=iso(nights), email=email)
         self.assertEqual(status, 201, data)
         return data
 
@@ -73,17 +73,23 @@ class FeatureBase(Base):
 class PassTests(FeatureBase):
     def test_booking_returns_a_pass_with_qr(self):
         res = self.book_today()
-        self.assertRegex(res["pass"]["code"], r"^HB\d+-[0-9A-F]{6}$")
+        self.assertRegex(res["pass"]["code"], r"^HB\d+-[0-9A-F]{32}$")
         self.assertTrue(res["pass"]["qr_svg"].startswith("<svg"))
         self.assertTrue(res["pass"]["code"].startswith(f"HB{res['reservation_id']}-"))
 
-    def test_my_booking_shows_the_pass_only_while_confirmed(self):
+    def test_my_reservations_shows_the_pass_only_while_confirmed(self):
         res = self.book(ci=d(0), co=d(2))[1]
-        body = {"reservation_id": res["reservation_id"], "email": "anna@example.kz"}
-        status, data, _ = call("POST", "/api/bookings/lookup", body)
-        self.assertEqual(data["pass"]["code"], res["pass"]["code"])
-        self.assertEqual(call("POST", "/api/bookings/cancel", body)[0], 200)
-        self.assertIsNone(call("POST", "/api/bookings/lookup", body)[1]["pass"])
+        token, csrf = self.guest_session("anna@example.kz")
+        status, history, _ = call("GET", "/api/guest/reservations", cookie=token, cookie_name="guest_session")
+        self.assertEqual(status, 200, history)
+        item = next(x for x in history["reservations"] if x["reservation_id"] == res["reservation_id"])
+        self.assertEqual(item["pass"]["code"], res["pass"]["code"])
+        cancelled, _, _ = call("POST", "/api/bookings/cancel", {"reservation_id": res["reservation_id"]},
+                               cookie=token, csrf=csrf, cookie_name="guest_session")
+        self.assertEqual(cancelled, 200)
+        status, history, _ = call("GET", "/api/guest/reservations", cookie=token, cookie_name="guest_session")
+        item = next(x for x in history["reservations"] if x["reservation_id"] == res["reservation_id"])
+        self.assertIsNone(item["pass"])
 
     def test_pass_lookup_needs_staff_and_rejects_forged_codes(self):
         res = self.book_today()
@@ -129,7 +135,9 @@ class CheckInTests(FeatureBase):
         self.assertEqual((status, data["code"]), (409, "cannot_check_in"))
         self.assertIn("opens on", data["error"])
         res = self.book(room="102", ci=d(5), co=d(7), email="cancel@example.kz")[1]
-        self.assertEqual(call("POST", "/api/bookings/cancel", {"reservation_id": res["reservation_id"], "email": "cancel@example.kz"})[0], 200)
+        owner_token, owner_csrf = self.guest_session("cancel@example.kz")
+        self.assertEqual(call("POST", "/api/bookings/cancel", {"reservation_id": res["reservation_id"]},
+                              cookie=owner_token, csrf=owner_csrf, cookie_name="guest_session")[0], 200)
         status, data, _ = call("POST", f"/api/staff/reservations/{res['reservation_id']}/check-in", {}, cookie, csrf)
         self.assertEqual((status, data["code"]), (409, "cannot_check_in"))
         self.assertIn("cancelled", data["error"])

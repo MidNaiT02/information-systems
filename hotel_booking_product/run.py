@@ -10,7 +10,23 @@ if __name__ == "__main__":
     records = None
     if "--records" in sys.argv:
         records = int(sys.argv[sys.argv.index("--records") + 1])
-    created = db.init_db(reset="--reset" in sys.argv, records=records, demo_data="--empty" not in sys.argv)
+    production = os.environ.get("APP_ENV", "development").lower() == "production"
+    if production:
+        missing = [name for name, value in (("FRONTDESK_PASSWORD", os.environ.get("FRONTDESK_PASSWORD")),
+                                             ("MANAGER_PASSWORD", os.environ.get("MANAGER_PASSWORD"))) if not value]
+        if missing:
+            raise SystemExit("Production mode requires FRONTDESK_PASSWORD and MANAGER_PASSWORD environment variables.")
+        if (os.environ["FRONTDESK_PASSWORD"] == "FrontDesk#2026" or
+                os.environ["MANAGER_PASSWORD"] == "Manager#2026"):
+            raise SystemExit("Do not use the published demo passwords in production. Set two unique staff passwords.")
+    created = db.init_db(reset="--reset" in sys.argv, records=records,
+                         demo_data=(not production and "--empty" not in sys.argv))
+    if production:
+        conn = db.connect()
+        try:
+            db.harden_production_accounts(conn)
+        finally:
+            conn.close()
     if "--add-records" in sys.argv:
         extra = int(sys.argv[sys.argv.index("--add-records") + 1])
         conn = db.connect()
@@ -21,10 +37,10 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8000"))
     print(f"Hotel Booking System: http://{host}:{port}   (stop with Ctrl+C)")
     if created:
-        print("New EMPTY database created (rooms and staff accounts only)." if "--empty" in sys.argv else f"New database created with demo data ({records or db.DEMO_RESERVATIONS} reservations).")
-    print("Demo staff accounts (change the passwords before real use):")
-    for name, role, email, password in db.STAFF_SEED:
-        print(f"  {role:<10} {email}   password: {password}")
+        if production or "--empty" in sys.argv:
+            print("New EMPTY database created (rooms and staff accounts only).")
+        else:
+            print(f"New database created with demo data ({records or db.DEMO_RESERVATIONS} reservations).")
     try:
         server.serve(host, port)
     except KeyboardInterrupt:

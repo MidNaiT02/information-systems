@@ -14,23 +14,23 @@
     return data;
   };
   const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  const money = n => Math.round(Number(n) || 0).toLocaleString('ru-RU') + ' KZT';
+  const money = n => Math.round(Number(n) || 0).toLocaleString(({ kz: 'kk-KZ', ru: 'ru-RU', en: 'en-US' }[window.hotelCurrentLanguage ? window.hotelCurrentLanguage() : 'kz'] || 'kk-KZ')) + ' KZT';
 
   // ------------------------------------------------------------ knowledge: what each part of the system does
   // who: roles that may use it (staff = FrontDesk and Manager). keys: words or phrases that point to it.
   const TOPICS = [
     { id: 'book', who: 'all', keys: ['book room', 'booking room', 'reserve', 'reservation new', 'search room', 'free room', 'available room', 'book', 'забронировать', 'бронь', 'номер'],
-      text: 'Pick check-in and check-out dates on the Rooms page and press Search rooms. You get one card per room type with the number of free rooms. Press Book this room, enter name, phone, email and a payment method. You get a reservation number and a QR check-in pass.',
+      text: 'Sign in or create a guest account first. Then pick check-in and check-out dates on the Rooms page and press Search rooms. Choose a room and confirm the payment method. The reservation is saved to your account, and the confirmation shows a reservation number and a QR check-in pass.',
       go: ['Open Rooms', '#/'] },
     { id: 'flex', who: 'all', keys: ['flexible', 'flex', 'cheaper', 'cheapest', 'nearby date', 'other date', 'shift date', 'different day', 'sold out', 'дешевле', 'другие даты'],
       text: 'After you search, the Flexible dates table appears under the results. It shows the same number of nights starting a few days earlier or later, the price per room type and how many rooms are free. Press Use these dates on a row to search again.',
       go: ['Search rooms', '#/'] },
     { id: 'manage', who: 'all', keys: ['cancel booking', 'cancel reservation', 'cancel', 'my booking', 'find booking', 'lookup', 'refund', 'отмена', 'отменить'],
-      text: 'Open My booking and enter your reservation number and email. The automatic cancellation refund is based on days remaining: 4 or more days = 100%, 2–3 days = 95%, 1 day = 90%, check-in day = 80%, and after check-in = 0%. The exact estimated amount is shown before you confirm cancellation.',
-      go: ['Open My booking', '#/manage'] },
+      text: 'Open My reservations after signing in. Your bookings are saved to your guest account automatically, You can view each reservation and cancel eligible stays. The automatic cancellation refund is based on days remaining: 4 or more days = 100%, 2–3 days = 95%, 1 day = 90%, check-in day = 80%, and after check-in = 0%. The exact estimated amount is shown before you confirm cancellation.',
+      go: ['Open My reservations', '#/manage'] },
     { id: 'pass', who: 'all', keys: ['qr', 'pass', 'check in code', 'pass code', 'ticket', 'barcode', 'qr код'],
-      text: 'Your QR check-in pass is shown when you book, and again under My booking while the reservation is confirmed. At the front desk, show the QR code or read out the code that looks like HB123-A1B2C3.',
-      go: ['Open My booking', '#/manage'] },
+      text: 'Your QR check-in pass is shown on the booking confirmation and under My reservations while the reservation is confirmed. At the front desk, show the QR code or read out the pass code that starts with HB and includes your reservation number.',
+      go: ['Open My reservations', '#/manage'] },
     { id: 'times', who: 'all', keys: ['check in time', 'checkin time', 'check out time', 'checkout time', 'arrival time', 'what time', 'late', 'early', 'время заезда', 'время выезда'],
       text: 'Check-in starts at 14:00 on the arrival date. Guests leave by 12:00 on the departure date, and the room then goes to housekeeping.' },
     { id: 'payment', who: 'all', keys: ['pay', 'payment', 'card', 'cash', 'transfer', 'оплата', 'оплатить'],
@@ -68,7 +68,7 @@
     { id: 'maintenance', who: 'staff', keys: ['maintenance ticket', 'repair room', 'wrench', 'maintenance'],
       text: 'Create a maintenance ticket with room, reason, start date and expected end date. Open or In Progress tickets block the room for overlapping booking dates and appear on the floor map with a wrench.', go: ['Open Maintenance', '#/staff/maintenance'] },
     { id: 'reviews', who: 'staff', keys: ['guest review', 'reviews', 'rating', 'low rating'],
-      text: 'Guests can submit a 1–5 star rating and comment after check-out from My booking using their booking pass. The Reviews tab flags ratings of 1–2 stars.', go: ['Open Reviews', '#/staff/reviews'] },
+      text: 'Guests can submit a 1–5 star rating and comment after check-out from their reservation in My reservations. The Reviews tab flags ratings of 1–2 stars.', go: ['Open Reviews', '#/staff/reviews'] },
     { id: 'outbox', who: 'staff', keys: ['outbox', 'resend', 'send again', 'email outbox', 'emails'],
       text: 'The Email outbox shows every confirmation email. If a guest did not get theirs, press resend on that row.',
       go: ['Open Email outbox', '#/staff/outbox'] },
@@ -127,7 +127,7 @@
 
   const PAGES = {
     '': ['Rooms', 'Pick your dates and press Search rooms. Under the results, Flexible dates compares nearby days.'],
-    manage: ['My booking', 'Enter your reservation number and email to see your QR pass or cancel.'],
+    manage: ['My reservations', 'Sign in to view your reservation history, QR check-in passes and eligible cancellations.'],
     staff: ['Staff', 'Log in, then use the tabs: reservations, floor map, housekeeping, check-in.'],
     'staff/reservations': ['Reservations', 'Filter, sort, change dates or cancel. Managers can also download CSV.'],
     'staff/calendar': ['Calendar', 'Booked nights for every room over a range of dates.'],

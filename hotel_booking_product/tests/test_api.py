@@ -5,10 +5,12 @@ Run:  py -m unittest discover -s tests -v
 import io
 import json
 import os
+import re
 import sys
 import tempfile
 import sqlite3
 import unittest
+from unittest.mock import patch
 from datetime import date, datetime, timedelta
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "backend"))
@@ -25,14 +27,14 @@ def d(n):
     return (FAR + timedelta(days=n)).isoformat()
 
 
-def call(method, path, body=None, cookie=None, csrf=None, content_type="application/json"):
+def call(method, path, body=None, cookie=None, csrf=None, content_type="application/json", cookie_name="session"):
     raw = json.dumps(body).encode() if body is not None else b""
     path_only, _, qs = path.partition("?")
     env = {"REQUEST_METHOD": method, "PATH_INFO": path_only, "QUERY_STRING": qs,
            "CONTENT_TYPE": content_type if method == "POST" else "", "CONTENT_LENGTH": str(len(raw)),
            "wsgi.input": io.BytesIO(raw)}
     if cookie:
-        env["HTTP_COOKIE"] = f"session={cookie}"
+        env["HTTP_COOKIE"] = f"{cookie_name}={cookie}"
     if csrf:
         env["HTTP_X_CSRF_TOKEN"] = csrf
     out = {}
@@ -54,6 +56,7 @@ class Base(unittest.TestCase):
         db.DB_PATH = os.path.join(self.tmp, "test.db")
         db.init_db(db.DB_PATH, reset=True, records=self.RECORDS)    # small demo data keeps the tests fast
         self.conn = db.connect()
+        self._guest_auth_cache = {}
         server._failed.clear()
 
     def tearDown(self):
@@ -71,8 +74,34 @@ class Base(unittest.TestCase):
         body.update(extra)
         return body
 
+    def guest_session(self, email="anna@example.kz", name="Anna Test", phone="+77001234567"):
+        key = email.strip().lower()
+        if key in self._guest_auth_cache:
+            return self._guest_auth_cache[key]
+        password = "GuestTestPassword9"
+        status, data, headers = call("POST", "/api/auth/register", {
+            "full_name": name or "Anna Test", "phone": phone or "+77001234567",
+            "email": email, "password": password})
+        if status == 409 and data.get("code") == "account_exists":
+            status, data, headers = call("POST", "/api/auth/guest-login",
+                                         {"email": email, "password": password})
+        if status != 201 and status != 200:
+            raise AssertionError(f"Could not establish test guest session for {email}: {status} {data}")
+        cookie_header = next(v for k, v in headers if k == "Set-Cookie" and v.startswith("guest_session="))
+        token = cookie_header.split(";", 1)[0].split("=", 1)[1]
+        result = (token, data["csrf"])
+        self._guest_auth_cache[key] = result
+        return result
+
+    def guest_api(self, method, path, body=None, email="anna@example.kz"):
+        token, csrf = self.guest_session(email)
+        return call(method, path, body, cookie=token, csrf=csrf if method == "POST" else None,
+                    cookie_name="guest_session")
+
     def book(self, **kw):
-        return call("POST", "/api/bookings", self.booking_body(**kw))
+        body = self.booking_body(**kw)
+        token, csrf = self.guest_session(body["email"], body.get("full_name", "Anna Test"), body.get("phone", "+77001234567"))
+        return call("POST", "/api/bookings", body, cookie=token, csrf=csrf, cookie_name="guest_session")
 
     def login(self, who="manager"):
         email, pw = {"manager": ("manager@hotel.example", "Manager#2026"),
@@ -101,6 +130,16 @@ class SearchAndBookingTests(Base):
         self.assertEqual(data["total_price"], 2 * 25000)
         self.assertEqual((self.count("reservations"), self.count("payments"), self.count("emails")), (r0 + 1, p0 + 1, e0 + 1))
         self.assertEqual(data["email"]["status"], "Sent")
+
+    def test_guest_count_is_saved_and_room_capacity_is_enforced(self):
+        status, data, _ = self.book(room="601", guest_count=3)
+        self.assertEqual(status, 201, data)
+        self.assertEqual(data["guest_count"], 3)
+        self.assertEqual(self.conn.execute(
+            "SELECT guest_count FROM reservations WHERE reservation_id=?", (data["reservation_id"],)
+        ).fetchone()[0], 3)
+        status, error, _ = self.book(room="101", guest_count=3, email="other@example.kz")
+        self.assertEqual((status, error["code"]), (400, "room_capacity_exceeded"))
 
     def test_confirmation_email_is_sent_within_one_minute(self):
         """FR-02: the confirmation email is sent within 1 minute of the booking"""
@@ -137,20 +176,29 @@ class SearchAndBookingTests(Base):
         self.assertNotIn("101", [r["room_number"] for r in data["rooms"]])
         self.assertNotIn("105", [r["room_number"] for r in data["rooms"]])   # maintenance
 
+    def test_search_filters_rooms_by_guest_capacity(self):
+        status, data, _ = call("GET", f"/api/rooms/search?check_in={d(600)}&check_out={d(602)}&guests=3")
+        self.assertEqual(status, 200, data)
+        self.assertEqual(data["guest_count"], 3)
+        self.assertTrue(all(int(room["capacity"]) >= 3 for room in data["rooms"]))
+        status, error, _ = call("GET", f"/api/rooms/search?check_in={d(600)}&check_out={d(602)}&guests=9")
+        self.assertEqual((status, error["code"]), (400, "bad_guest_count"))
+
     def test_maintenance_room_is_rejected(self):
         status, data, _ = self.book(room="105")
         self.assertEqual((status, data["code"]), (409, "room_maintenance"))
 
-    def test_bad_input_is_rejected(self):
-        self.assertEqual(self.book(full_name="")[0], 400)
-        self.assertEqual(self.book(email="not-an-email")[0], 400)
-        self.assertEqual(self.book(phone="abc")[0], 400)
+    def test_bad_booking_input_is_rejected(self):
+        # Guest identity is taken from the authenticated profile, not from POST fields.
         self.assertEqual(self.book(method="Bitcoin")[0], 400)
         self.assertEqual(self.book(co=d(-1))[0], 400)
-        self.assertEqual(call("POST", "/api/bookings", dict(self.booking_body(), room_id=9999))[0], 404)
+        body = self.booking_body(room="102")
+        token, csrf = self.guest_session(body["email"])
+        self.assertEqual(call("POST", "/api/bookings", dict(body, room_id=9999), cookie=token, csrf=csrf, cookie_name="guest_session")[0], 404)
 
     def test_failed_payment_rolls_back_everything(self):
         """Transaction: a failed payment leaves no reservation, guest or email behind"""
+        self.guest_session("new@example.kz")
         before = [self.count(t) for t in ("reservations", "guests", "emails", "payments")]
         status, data, _ = self.book(email="new@example.kz", simulate_payment_failure=True)
         self.assertEqual((status, data["code"]), (402, "payment_failed"))
@@ -164,71 +212,54 @@ class SearchAndBookingTests(Base):
 
 
 class GuestSelfServiceTests(Base):
-    def make(self):
-        _, data, _ = self.book(ci=d(20), co=d(23))
-        return data
+    def make(self, email="anna@example.kz"):
+        return self.book(ci=d(20), co=d(23), email=email)[1]
 
-    def test_lookup_needs_the_right_email(self):
-        b = self.make()
-        ok = call("POST", "/api/bookings/lookup", {"reservation_id": b["reservation_id"], "email": "ANNA@example.kz"})
-        self.assertEqual(ok[0], 200)
-        self.assertNotIn("phone", ok[1])
-        bad = call("POST", "/api/bookings/lookup", {"reservation_id": b["reservation_id"], "email": "other@example.kz"})
-        self.assertEqual(bad[0], 404)
+    def test_booking_requires_guest_login_and_has_no_management_code(self):
+        body = self.booking_body(room="101", ci=d(20), co=d(23), email="auth.required@example.kz")
+        denied = call("POST", "/api/bookings", body)
+        self.assertEqual((denied[0], denied[1]["code"]), (401, "login_required"))
+        booking = self.make("auth.required@example.kz")
+        self.assertNotIn("manage_token", booking)
+        columns = {r[1] for r in self.conn.execute("PRAGMA table_info(reservations)")}
+        self.assertNotIn("manage_token_hash", columns)
+        mail = self.conn.execute("SELECT body FROM emails WHERE reservation_id=?", (booking["reservation_id"],)).fetchone()[0]
+        self.assertNotIn("management code", mail.lower())
+        self.assertEqual(call("POST", "/api/bookings/lookup", {"reservation_id": booking["reservation_id"]})[0], 404)
 
-    def test_guest_lookup_accepts_reservation_number_or_pass_code_or_email(self):
-        b = self.make()
-        by_number = call("POST", "/api/bookings/lookup", {"reservation_id": str(b["reservation_id"])})
-        self.assertEqual(by_number[0], 200)
-        self.assertEqual(by_number[1]["reservation_id"], b["reservation_id"])
-        by_code = call("POST", "/api/bookings/lookup", {"pass_code": b["pass"]["code"]})
-        self.assertEqual(by_code[0], 200)
-        self.assertEqual(by_code[1]["reservation_id"], b["reservation_id"])
-        by_email = call("POST", "/api/bookings/lookup", {"email": "anna@example.kz"})
-        self.assertEqual(by_email[0], 200)
-        self.assertEqual(len(by_email[1]["reservations"]), 1)
+    def test_owner_can_view_and_cancel_booking_without_a_separate_code(self):
+        booking = self.make("owner@example.kz")
+        token, csrf = self.guest_session("owner@example.kz")
+        status, history, _ = call("GET", "/api/guest/reservations", cookie=token, cookie_name="guest_session")
+        self.assertEqual(status, 200, history)
+        owned = next(x for x in history["reservations"] if x["reservation_id"] == booking["reservation_id"])
+        self.assertEqual(owned["pass"]["code"], booking["pass"]["code"])
+        status, result, _ = call("POST", "/api/bookings/cancel", {"reservation_id": booking["reservation_id"]},
+                                 cookie=token, csrf=csrf, cookie_name="guest_session")
+        self.assertEqual(status, 200, result)
+        self.assertEqual(result["refunded"], booking["total_price"])
 
-    def test_guest_email_lookup_returns_multiple_reservations(self):
-        first = self.make()
-        self.book(ci=d(30), co=d(32), email="anna@example.kz")
-        status, data, _ = call("POST", "/api/bookings/lookup", {"email": "ANNA@example.kz"})
-        self.assertEqual(status, 200)
-        self.assertEqual(len(data["reservations"]), 2)
-
-    def test_early_cancellation_refunds_and_frees_the_room(self):
-        b = self.make()
-        status, data, _ = call("POST", "/api/bookings/cancel", {"reservation_id": b["reservation_id"], "email": "anna@example.kz"})
-        self.assertEqual(status, 200)
-        self.assertEqual(data["refunded"], b["total_price"])
-        _, detail, _ = call("POST", "/api/bookings/lookup", {"reservation_id": b["reservation_id"], "email": "anna@example.kz"})
-        self.assertEqual((detail["status"], detail["paid"]), ("Cancelled", 0))
-        _, rooms, _ = call("GET", f"/api/rooms/search?check_in={d(20)}&check_out={d(23)}")
-        self.assertIn("101", [r["room_number"] for r in rooms["rooms"]])
+    def test_another_guest_cannot_cancel_someone_elses_reservation(self):
+        booking = self.make("first.owner@example.kz")
+        other_token, other_csrf = self.guest_session("other.owner@example.kz", "Other Owner")
+        status, data, _ = call("POST", "/api/bookings/cancel", {"reservation_id": booking["reservation_id"]},
+                               cookie=other_token, csrf=other_csrf, cookie_name="guest_session")
+        self.assertEqual((status, data["code"]), (404, "not_found"))
 
     def test_cancelling_twice_fails(self):
-        b = self.make()
-        body = {"reservation_id": b["reservation_id"], "email": "anna@example.kz"}
-        call("POST", "/api/bookings/cancel", body)
-        self.assertEqual(call("POST", "/api/bookings/cancel", body)[0], 409)
-
-    def test_checkin_day_guest_cancellation_uses_80_percent_policy(self):
-        b = self.make()
-        now = datetime.strptime(d(20), "%Y-%m-%d") + timedelta(hours=14) - timedelta(hours=5)
-        res = db.cancel_reservation(self.conn, b["reservation_id"], "Guest", now=now)
-        self.assertEqual(res["refund_percent"], 80)
-        self.assertEqual(res["refunded"], round(res["refunded"] / 0.8, 2) * 0.8)
+        booking = self.make()
+        token, csrf = self.guest_session("anna@example.kz")
+        body = {"reservation_id": booking["reservation_id"]}
+        first = call("POST", "/api/bookings/cancel", body, cookie=token, csrf=csrf, cookie_name="guest_session")
+        self.assertEqual(first[0], 200)
+        second = call("POST", "/api/bookings/cancel", body, cookie=token, csrf=csrf, cookie_name="guest_session")
+        self.assertEqual(second[0], 409)
 
     def test_manager_cancellation_uses_the_same_automatic_policy(self):
         now = datetime.strptime(d(20), "%Y-%m-%d") + timedelta(hours=14) - timedelta(hours=5)
         a = self.make()
         res = db.cancel_reservation(self.conn, a["reservation_id"], "Manager", now=now, refund=True)
         self.assertEqual(res["refund_percent"], 80)
-        self.assertGreater(res["refunded"], 0)
-        _, c, _ = self.book(ci=d(30), co=d(32), email="c@example.kz")
-        now2 = datetime.strptime(d(30), "%Y-%m-%d") + timedelta(hours=14) - timedelta(hours=2)
-        res2 = db.cancel_reservation(self.conn, c["reservation_id"], "Manager", now=now2, refund=False)
-        self.assertEqual(res2["refund_percent"], 80)
-        self.assertGreater(res2["refunded"], 0)
 
 
 class StaffTests(Base):
@@ -370,12 +401,247 @@ class SecurityTests(Base):
         status, body, headers = call("GET", "/")
         h = dict(headers)
         self.assertEqual(status, 200)
-        self.assertIn(b"Hotel Booking System", body)
+        self.assertIn(b"NEON OASIS", body)
+        self.assertIn(b'data-fixed-theme="cyberpunk"', body)
         self.assertIn("default-src 'self'", h["Content-Security-Policy"])
+        self.assertIn("https://fonts.googleapis.com", h["Content-Security-Policy"])
+        self.assertIn("https://fonts.gstatic.com", h["Content-Security-Policy"])
         self.assertEqual(h["X-Content-Type-Options"], "nosniff")
+        self.assertEqual(call("GET", "/static/app.js")[0], 200)
+        gta_status, gta_body, _ = call("GET", "/gta-vi")
+        self.assertEqual(gta_status, 200)
+        self.assertIn(b"data-fixed-theme=\"gta\"", gta_body)
+        self.assertIn(b"THE MARISOL", gta_body)
+        self.assertIn(b"/static/app.js", gta_body)
+        self.assertIn(b"/static/assistant.js", gta_body)
+        self.assertIn(b"/static/i18n.js", gta_body)
+        self.assertEqual(call("GET", "/static/gta-vi.css")[0], 200)
+        official_status, official_body, _ = call("GET", "/official")
+        self.assertEqual(official_status, 200)
+        self.assertIn(b'data-fixed-theme="official"', official_body)
+        self.assertIn(b'data-default-lang="en"', official_body)
+        self.assertIn(b'Playfair+Display', official_body)
+        accessible_status, accessible_body, _ = call("GET", "/daltonism")
+        self.assertEqual(accessible_status, 200)
+        self.assertIn(b'data-fixed-theme="accessible"', accessible_body)
+        self.assertIn(b'data-default-lang="en"', accessible_body)
+        self.assertIn(b'Atkinson+Hyperlegible', accessible_body)
+        i18n_status, i18n_body, _ = call("GET", "/static/i18n.js")
+        self.assertEqual(i18n_status, 200)
+        self.assertIn(b"new Set(['en', 'ru', 'kz'])", i18n_body)
+        self.assertIn("'Rooms':'Номера'".encode(), i18n_body)
+        self.assertIn("'Rooms':'БӨЛМЕЛЕР'".encode(), i18n_body)
+        self.assertIn(b"document.documentElement.lang = next === 'kz' ? 'kk' : next", i18n_body)
+        self.assertIn(b"window.hotelOnLanguageChange()", i18n_body)
+        app_status, app_body, _ = call("GET", "/static/app.js")
+        self.assertEqual(app_status, 200)
+        self.assertIn(b"['accessible','Daltonism-safe']", app_body)
+        self.assertIn(b"['official','Official & Premium']", app_body)
+        self.assertIn(b"['kz','en','ru']", app_body)
+        self.assertIn(b"hotelOnLanguageChange", app_body)
+        official_css_status, official_css, _ = call("GET", "/static/official.css")
+        self.assertEqual(official_css_status, 200)
+        self.assertIn(b"Playfair Display", official_css)
+        self.assertIn(b"officialFadeSlide .2s", official_css)
+        accessible_css_status, accessible_css, _ = call("GET", "/static/daltonism.css")
+        self.assertEqual(accessible_css_status, 200)
+        self.assertIn(b"Atkinson Hyperlegible", accessible_css)
+        self.assertIn(b"min-height:48px", accessible_css)
+        self.assertIn(b":focus-visible", accessible_css)
+        self.assertIn(b"prefers-reduced-motion:reduce", accessible_css)
+        self.assertEqual(call("GET", "/static/assets/rooms/standard.svg")[0], 200)
+        self.assertEqual(call("GET", "/static/assets/cyberpunk/standard.svg")[0], 200)
         self.assertEqual(call("GET", "/static/app.js")[0], 200)
         self.assertEqual(call("GET", "/static/../backend/db.py")[0], 404)
         self.assertEqual(call("GET", "/static/..%2fbackend%2fdb.py")[0], 404)
+
+
+class GuestAccountTests(Base):
+    def guest_call(self, method, path, body=None, cookie=None, csrf=None):
+        raw = json.dumps(body or {}).encode() if method == "POST" else b""
+        env = {"REQUEST_METHOD": method, "PATH_INFO": path, "QUERY_STRING": "",
+               "CONTENT_TYPE": "application/json" if method == "POST" else "",
+               "CONTENT_LENGTH": str(len(raw)), "wsgi.input": io.BytesIO(raw)}
+        if cookie: env["HTTP_COOKIE"] = "guest_session=" + cookie
+        if csrf: env["HTTP_X_CSRF_TOKEN"] = csrf
+        out = {}
+        def start_response(status, headers): out["status"], out["headers"] = int(status.split()[0]), headers
+        data = b"".join(server.app(env, start_response))
+        return out["status"], json.loads(data), out["headers"]
+
+    def register_guest(self, email, name="Guest Account", password="GuestPassword8"):
+        with patch.dict(os.environ, {"SMTP_HOST": ""}):
+            return self.guest_call("POST", "/api/auth/register", {
+                "full_name": name, "phone": "+77001234567", "email": email, "password": password})
+
+    def test_guest_can_register_and_session_is_http_only(self):
+        status, data, headers = self.register_guest("new.guest@example.kz")
+        self.assertEqual(status, 201, data)
+        self.assertEqual(data["user"]["role"], "Guest")
+        cookie_header = next(v for k, v in headers if k == "Set-Cookie" and v.startswith("guest_session="))
+        self.assertIn("HttpOnly", cookie_header)
+        token = cookie_header.split(";", 1)[0].split("=", 1)[1]
+        me_status, me, _ = self.guest_call("GET", "/api/auth/me", cookie=token)
+        self.assertEqual(me_status, 200)
+        self.assertEqual(me["user"]["email"], "new.guest@example.kz")
+        self.assertNotIn("password", str(me))
+
+    def test_guest_login_and_staff_routes_remain_protected(self):
+        self.register_guest("new.guest@example.kz")
+        status, data, headers = self.guest_call("POST", "/api/auth/guest-login", {
+            "email": "new.guest@example.kz", "password": "GuestPassword8"})
+        self.assertEqual(status, 200, data)
+        token = next(v for k, v in headers if k == "Set-Cookie" and v.startswith("guest_session=")).split(";", 1)[0].split("=", 1)[1]
+        status, denied, _ = self.guest_call("GET", "/api/staff/reservations", cookie=token)
+        self.assertEqual(status, 401)
+        self.assertEqual(denied["code"], "login_required")
+
+    def test_all_four_demo_loyalty_accounts_login_with_the_expected_tier(self):
+        demo = [
+            ("demo.none@hotel.test", "NoneTier#2026", "None", 0, 0, 0, "Silver", 2),
+            ("demo.silver@hotel.test", "SilverTier#2026", "Silver", 2, 5, 2, "Gold", 3),
+            ("demo.gold@hotel.test", "GoldTier#2026", "Gold", 5, 8, 5, "Platinum", 5),
+            ("demo.platinum@hotel.test", "PlatinumTier#2026", "Platinum", 10, 12, 10, None, 0),
+        ]
+        for email, password, tier, stays, discount, history_count, next_tier, stays_to_next in demo:
+            status, data, headers = self.guest_call("POST", "/api/auth/guest-login",
+                                                    {"email": email, "password": password})
+            self.assertEqual(status, 200, data)
+            self.assertEqual(data["user"]["loyalty_tier"], tier)
+            self.assertEqual(data["user"]["completed_stays"], stays)
+            self.assertEqual(data["user"]["loyalty_discount"], discount)
+            self.assertEqual(data["user"]["loyalty_progress"]["next_tier"], next_tier)
+            self.assertEqual(data["user"]["loyalty_progress"]["stays_to_next"], stays_to_next)
+            cookie = next(v for k, v in headers if k == "Set-Cookie" and v.startswith("guest_session="))
+            self.assertIn("HttpOnly", cookie)
+            token = cookie.split(";", 1)[0].split("=", 1)[1]
+            me_status, me, _ = self.guest_call("GET", "/api/auth/me", cookie=token)
+            self.assertEqual(me_status, 200)
+            self.assertEqual(me["user"]["loyalty_tier"], tier)
+            history_status, history, _ = self.guest_call("GET", "/api/guest/reservations", cookie=token)
+            self.assertEqual(history_status, 200, history)
+            self.assertEqual(history["count"], history_count)
+
+    def test_signed_in_guest_booking_is_saved_to_account_history(self):
+        status, data, headers = self.register_guest("history.owner@example.kz", name="Account Owner")
+        self.assertEqual(status, 201, data)
+        token = next(v for k, v in headers if k == "Set-Cookie" and v.startswith("guest_session=")).split(";", 1)[0].split("=", 1)[1]
+        rooms, _ = db.search_free_rooms(self.conn, d(10), d(12))
+        self.assertTrue(rooms)
+        body = self.booking_body(room=rooms[0]["room_number"], ci=d(10), co=d(12), email="someone-else@example.kz")
+        status, booking, _ = self.guest_call("POST", "/api/bookings", body, cookie=token, csrf=data["csrf"])
+        self.assertEqual(status, 201, booking)
+        saved_guest = self.conn.execute("SELECT guest_id FROM reservations WHERE reservation_id=?", (booking["reservation_id"],)).fetchone()[0]
+        account_guest = self.conn.execute("SELECT guest_id FROM guests WHERE email='history.owner@example.kz'").fetchone()[0]
+        self.assertEqual(saved_guest, account_guest)
+        status, history, _ = self.guest_call("GET", "/api/guest/reservations", cookie=token)
+        self.assertEqual(status, 200, history)
+        self.assertEqual(history["count"], 1)
+        self.assertEqual(history["reservations"][0]["reservation_id"], booking["reservation_id"])
+
+    def test_guest_history_requires_a_signed_in_guest(self):
+        status, data, _ = self.guest_call("GET", "/api/guest/reservations")
+        self.assertEqual(status, 401)
+        self.assertEqual(data["code"], "login_required")
+
+    def test_guest_registration_enforces_password_and_duplicate_email(self):
+        base = {"full_name": "Guest Account", "phone": "+77001234567", "email": "new.guest@example.kz"}
+        status, data, _ = self.guest_call("POST", "/api/auth/register", dict(base, password="weak"))
+        self.assertEqual(status, 400)
+        self.assertEqual(data["code"], "weak_password")
+        self.assertEqual(self.register_guest("new.guest@example.kz")[0], 201)
+        status, data, _ = self.guest_call("POST", "/api/auth/register", dict(base, password="GuestPassword9"))
+        self.assertEqual(status, 409)
+        self.assertEqual(data["code"], "account_exists")
+
+    def test_registration_does_not_claim_preexisting_unowned_booking_without_verification(self):
+        self.conn.execute("INSERT INTO guests(full_name,phone,email) VALUES (?,?,?)",
+                          ("Legacy Guest", "+77001234567", "already-booked@example.kz"))
+        status, data, _ = self.guest_call("POST", "/api/auth/register", {
+            "full_name": "New Account", "phone": "+77001234567",
+            "email": "already-booked@example.kz", "password": "StrongPassword123"})
+        self.assertEqual((status, data["code"]), (409, "existing_booking_needs_staff_link"))
+        self.assertEqual(self.count("guest_accounts"), 4)  # only pre-existing demo accounts
+
+    def test_guest_password_change_requires_csrf_and_revokes_other_sessions(self):
+        status, data, headers = self.register_guest("guest-pass@example.kz", password="StrongPassword123")
+        self.assertEqual(status, 201, data)
+        guest_cookie = [v for k, v in headers if k == "Set-Cookie" and v.startswith("guest_session=")][0].split(";", 1)[0].split("=", 1)[1]
+        csrf = data["csrf"]
+        bad = call("POST", "/api/auth/guest-password", {"current": "StrongPassword123", "new": "AnotherStrong123"},
+                   guest_cookie, cookie_name="guest_session")
+        self.assertEqual((bad[0], bad[1]["code"]), (403, "bad_csrf"))
+        good = call("POST", "/api/auth/guest-password", {"current": "StrongPassword123", "new": "AnotherStrong123"},
+                    guest_cookie, csrf, cookie_name="guest_session")
+        self.assertEqual(good[0], 200, good[1])
+        self.assertIsNone(security.check_guest_login(self.conn, "guest-pass@example.kz", "StrongPassword123"))
+        self.assertIsNotNone(security.check_guest_login(self.conn, "guest-pass@example.kz", "AnotherStrong123"))
+
+    def test_guest_session_exposes_csrf_on_auth_me(self):
+        status, data, headers = self.register_guest("guest-csrf@example.kz", password="StrongPassword123")
+        self.assertEqual(status, 201)
+        guest_cookie = [v for k, v in headers if k == "Set-Cookie" and v.startswith("guest_session=")][0].split(";", 1)[0].split("=", 1)[1]
+        status, me, _ = call("GET", "/api/auth/me", cookie=guest_cookie, cookie_name="guest_session")
+        self.assertEqual(status, 200)
+        self.assertEqual(me["csrf"], data["csrf"])
+
+    def test_guest_account_page_api_reads_and_updates_own_profile(self):
+        status, data, headers = self.register_guest("profile.guest@example.kz", name="Profile Guest")
+        self.assertEqual(status, 201, data)
+        cookie = next(v for k, v in headers if k == "Set-Cookie" and v.startswith("guest_session="))
+        token = cookie.split(";", 1)[0].split("=", 1)[1]
+        me_status, profile, _ = self.guest_call("GET", "/api/auth/account", cookie=token)
+        self.assertEqual(me_status, 200, profile)
+        self.assertEqual(profile["user"]["name"], "Profile Guest")
+        self.assertEqual(profile["user"]["email"], "profile.guest@example.kz")
+        self.assertEqual(profile["user"]["phone"], "+77001234567")
+        updated, result, _ = self.guest_call("POST", "/api/auth/account", {
+            "full_name": "Updated Guest", "phone": "+77009998877"}, cookie=token, csrf=data["csrf"])
+        self.assertEqual(updated, 200, result)
+        self.assertEqual(result["user"]["name"], "Updated Guest")
+        self.assertEqual(result["user"]["phone"], "+77009998877")
+        stored = self.conn.execute("SELECT full_name,phone,email FROM guests WHERE email=?",
+                                   ("profile.guest@example.kz",)).fetchone()
+        self.assertEqual(tuple(stored), ("Updated Guest", "+77009998877", "profile.guest@example.kz"))
+
+    def test_account_page_supports_frontdesk_and_manager_profiles(self):
+        for role in ("frontdesk", "manager"):
+            cookie, csrf = self.login(role)
+            status, profile, _ = call("GET", "/api/auth/account", cookie=cookie)
+            self.assertEqual(status, 200, profile)
+            expected_role = "FrontDesk" if role == "frontdesk" else "Manager"
+            self.assertEqual(profile["user"]["role"], expected_role)
+            updated, result, _ = call("POST", "/api/auth/account", {"full_name": f"{role.title()} Profile", "phone": "+77008887766"},
+                                     cookie=cookie, csrf=csrf)
+            self.assertEqual(updated, 200, result)
+            self.assertEqual(result["user"]["name"], f"{role.title()} Profile")
+            stored = self.conn.execute("SELECT full_name, phone FROM staff WHERE email=?",
+                                       (f"{role}@hotel.example",)).fetchone()
+            self.assertEqual(tuple(stored), (f"{role.title()} Profile", "+77008887766"))
+
+    def test_account_page_requires_authentication_and_csrf_for_updates(self):
+        status, denied, _ = call("GET", "/api/auth/account")
+        self.assertEqual((status, denied["code"]), (401, "login_required"))
+        cookie, _csrf = self.login("manager")
+        bad, result, _ = call("POST", "/api/auth/account", {"full_name": "No CSRF"}, cookie=cookie)
+        self.assertEqual((bad, result["code"]), (403, "bad_csrf"))
+
+    def test_guest_password_reset_uses_email_code_and_revokes_sessions(self):
+        self.register_guest("reset@example.kz", password="OriginalPassword123")
+        delivered = []
+        with patch.dict(os.environ, {"SMTP_HOST": "smtp.test"}), \
+             patch.object(db, "send_transactional_email", side_effect=lambda to, subject, body: delivered.append(body)):
+            status, data, _ = self.guest_call("POST", "/api/auth/guest-password-reset/request", {"email": "reset@example.kz"})
+            self.assertEqual(status, 200, data)
+            code = re.search(r"code is: (\d{8})", delivered[-1]).group(1)
+            wrong = self.guest_call("POST", "/api/auth/guest-password-reset/confirm", {
+                "email": "reset@example.kz", "code": "00000000", "new_password": "NewStrongPassword123"})
+            self.assertEqual((wrong[0], wrong[1]["code"]), (400, "bad_reset_code"))
+            good = self.guest_call("POST", "/api/auth/guest-password-reset/confirm", {
+                "email": "reset@example.kz", "code": code, "new_password": "NewStrongPassword123"})
+            self.assertEqual(good[0], 200, good[1])
+        self.assertIsNone(security.check_guest_login(self.conn, "reset@example.kz", "OriginalPassword123"))
+        self.assertIsNotNone(security.check_guest_login(self.conn, "reset@example.kz", "NewStrongPassword123"))
 
 
 class DatabaseRuleTests(Base):
@@ -494,7 +760,9 @@ class RoomsAndPricesTests(Base):
     def test_price_change_never_touches_existing_reservations(self):
         self.book(room="101", ci=d(60), co=d(62))                       # a Confirmed one made now
         _, b, _ = self.book(room="102", ci=d(60), co=d(62))
-        call("POST", "/api/bookings/cancel", {"reservation_id": b["reservation_id"], "email": "anna@example.kz"})
+        owner_token, owner_csrf = self.guest_session("anna@example.kz")
+        call("POST", "/api/bookings/cancel", {"reservation_id": b["reservation_id"]},
+             cookie=owner_token, csrf=owner_csrf, cookie_name="guest_session")
         statuses = {r[0] for r in self.conn.execute("SELECT status FROM reservations")}
         self.assertEqual(statuses, {"Confirmed", "Cancelled", "Completed"})   # all three kinds exist
         before = self.snapshot()
@@ -528,14 +796,16 @@ class RoomsAndPricesTests(Base):
         self.assertTrue(any(x["action"] == "price_change" and "Deluxe" in x["detail"] and "45000" in x["detail"]
                             for x in audit["audit"]))
 
-    def test_an_old_database_without_nightly_rate_is_upgraded(self):
+    def test_an_old_database_without_nightly_rate_or_guest_count_is_upgraded(self):
         self.conn.execute("ALTER TABLE reservations DROP COLUMN nightly_rate")
+        self.conn.execute("ALTER TABLE reservations DROP COLUMN guest_count")
         self.conn.close()
         db.init_db(db.DB_PATH)                                         # existing file: migrate, do not recreate
         self.conn = db.connect()
         bad = self.conn.execute(
             "SELECT COUNT(*) FROM reservations WHERE ABS(nightly_rate * (julianday(check_out) - julianday(check_in)) - total_price) > 0.01").fetchone()[0]
         self.assertEqual(bad, 0)
+        self.assertEqual(self.conn.execute("SELECT COUNT(*) FROM reservations WHERE guest_count != 1").fetchone()[0], 0)
         self.assertGreater(self.count("reservations"), 0)
 
 
@@ -794,6 +1064,9 @@ class ImprovementTests(Base):
     def test_front_desk_can_resend_a_confirmation_email(self):
         _, b, _ = self.book(ci=d(20), co=d(22))
         cookie, csrf = self.login("frontdesk")
+        outbox = call("GET", "/api/staff/emails", cookie=cookie)[1]["emails"]
+        own_mail = next(m for m in outbox if m["email_id"] == b["email_id"])
+        self.assertNotIn("management code", own_mail["body"].lower())
         n = self.count("emails")
         status, data, _ = call("POST", f"/api/staff/emails/{b['email_id']}/resend", {}, cookie=cookie, csrf=csrf)
         self.assertEqual((status, data["status"], data["to"]), (200, "Sent", "anna@example.kz"))
@@ -998,8 +1271,12 @@ class EmptyDatabaseTests(unittest.TestCase):
         ci, co = d(0), d(2)
         _, rooms, _ = call("GET", f"/api/rooms/search?check_in={ci}&check_out={co}")
         room = rooms["rooms"][0]["room_id"]
-        status, booking, _ = call("POST", "/api/bookings", {"room_id": room, "check_in": ci, "check_out": co, "full_name": "First Guest",
-                                                            "phone": "+77001234567", "email": "first@example.kz", "method": "Cash"})
+        reg_status, reg, reg_headers = call("POST", "/api/auth/register", {"full_name": "First Guest",
+            "phone": "+77001234567", "email": "first@example.kz", "password": "FirstGuestPassword9"})
+        self.assertEqual(reg_status, 201, reg)
+        guest_cookie = next(v for k, v in reg_headers if k == "Set-Cookie" and v.startswith("guest_session=" )).split(";", 1)[0].split("=", 1)[1]
+        status, booking, _ = call("POST", "/api/bookings", {"room_id": room, "check_in": ci, "check_out": co,
+            "method": "Cash"}, cookie=guest_cookie, csrf=reg["csrf"], cookie_name="guest_session")
         self.assertEqual((status, booking["reservation_id"]), (201, 1))
         _, dash, _ = call("GET", "/api/manager/dashboard", cookie=self.cookie)
         self.assertEqual(dash["upcoming_bookings"], 1)

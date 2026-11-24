@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="kk" data-mar-theme="sunset">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#3B1A5A">
+  <title>The Marisol — Vice City жағалауындағы демалыс</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/marisol/marisol.css">
+</head>
+<body>
+  <div class="mar-grain" aria-hidden="true"></div>
+  <div class="mar-wipe" id="mar-wipe" aria-hidden="true"></div>
+  <header class="mar-nav">
+    <a class="mar-wordmark" href="/marisol" aria-label="The Marisol — басты бет"><span class="mar-sun-mark">M</span><span>THE MARISOL<small>VICE CITY · FLORIDA</small></span></a>
+    <div class="mar-nav-tools">
+      <label class="mar-control"><span data-i18n="style">КӨРІНІС СТИЛІ</span><select id="style-select" aria-label="Көрініс стилі"><option value="sunset">SUNSET</option><option value="afterdark">AFTER DARK</option></select></label>
+      <label class="mar-control mar-lang"><span data-i18n="language">ТІЛ</span><select id="lang-select" aria-label="Тіл"><option value="kz">KZ</option><option value="en">EN</option></select></label>
+    </div>
+    <nav class="mar-main-nav" aria-label="Негізгі навигация">
+      <button class="mar-tab is-active" aria-current="page" data-tab="rooms" data-i18n="rooms">БӨЛМЕЛЕР</button>
+      <button class="mar-tab" aria-current="false" data-tab="bookings" data-i18n="myBookings">МЕНІҢ БРОНДАУЛАРЫМ</button>
+    </nav>
+    <button class="mar-platinum" id="platinum-btn"><span>✦</span><span data-i18n="platinum">ПЛАТИНА · 12% OFF</span></button>
+    <div class="mar-user-slot" id="user-slot"><button class="mar-signin" id="signin-btn" data-i18n="signIn">КІРУ</button></div>
+  </header>
+
+  <main class="mar-shell" id="mar-app">
+    <section class="booking-band" id="booking-band">
+      <div class="band-deco band-deco-left" aria-hidden="true"></div>
+      <div class="band-deco band-deco-right" aria-hidden="true"></div>
+      <div class="band-copy">
+        <p class="eyebrow"><span class="eyebrow-dot"></span><span data-i18n="eyebrow">МИАМИ ЖАҒАЛАУЫ · КҮН БАТҚАНША ҚАЛА СЕНІКІ</span></p>
+        <h1 data-i18n="headline">ҚАЙ КҮНДЕРГЕ<br>БӨЛМЕ ҚАЖЕТ?</h1>
+        <p class="band-subtitle" data-i18n="subhead">Күн, мұхит және ешкім сұрамайтын late check-out.</p>
+      </div>
+      <form class="mar-search" id="search-form">
+        <div class="search-mobile-head"><span data-i18n="tripDetails">САПАР МӘЛІМЕТТЕРІ</span><button type="button" id="search-collapse" aria-label="Іздеу панелін жабу">⌄</button></div>
+        <label class="mar-field"><span data-i18n="checkIn">КЕЛУ КҮНІ</span><input type="date" id="mar-ci" required></label>
+        <label class="mar-field"><span data-i18n="checkOut">КЕТУ КҮНІ</span><input type="date" id="mar-co" required></label>
+        <div class="mar-field guest-field"><span data-i18n="guests">ҚОНАҚТАР</span><div class="guest-stepper"><button type="button" id="guest-minus" aria-label="Қонақ санын азайту">−</button><output id="guest-count">2</output><button type="button" id="guest-plus" aria-label="Қонақ санын көбейту">+</button></div></div>
+        <button class="mar-search-btn" type="submit"><span data-i18n="search">БӨЛМЕЛЕРДІ ІЗДЕУ</span><b aria-hidden="true">↗</b></button>
+      </form>
+      <div class="band-foot"><span>25° 46' N · 80° 12' W</span><span data-i18n="bandFoot">ЖАҒАЛАУДАҒЫ ӨМІР — ӨЗ ЕРЕЖЕҢМЕН</span><span>EST. 1986</span></div>
+    </section>
+
+    <div class="marquee" aria-label="Қонақ үй ұсыныстары"><div class="marquee-track"><span data-i18n="ticker">МҰХИТ КӨРІНІСІ · 249$ БАСТАП · КҮН БАТУҒА ДЕЙІН КЕШІКПЕ · PALM LIFE ·</span><span data-i18n="ticker">МҰХИТ КӨРІНІСІ · 249$ БАСТАП · КҮН БАТУҒА ДЕЙІН КЕШІКПЕ · PALM LIFE ·</span></div></div>
+
+    <section class="room-section" id="rooms-section">
+      <div class="section-heading">
+        <div><p class="eyebrow ink-eyebrow" data-i18n="stayCollection">THE MARISOL · БӨЛМЕЛЕР ЖИНАҒЫ</p><h2 data-i18n="roomHeadline">КІЛТТІ АЛ.<br><em>ҚАЛАНЫ ҰСТА.</em></h2></div>
+        <p class="section-note" data-i18n="roomIntro">Әр бөлмеде өз атмосферасы бар. Қалғанын мұхит шешеді.</p>
+      </div>
+      <div class="room-toolbar">
+        <div class="room-filters" id="room-filters" aria-label="Бөлме түрлері">
+          <button class="filter-chip is-selected" aria-pressed="true" data-filter="All" data-i18n="allRooms">БАРЛЫҒЫ</button>
+          <button class="filter-chip" aria-pressed="false" data-filter="Standard">STANDARD</button>
+          <button class="filter-chip" aria-pressed="false" data-filter="Deluxe">DELUXE</button>
+          <button class="filter-chip" aria-pressed="false" data-filter="Suite">SUITE</button>
+          <button class="filter-chip" aria-pressed="false" data-filter="President">PRESIDENT</button>
+        </div>
+        <p class="availability-line" id="availability-line" aria-live="polite" data-i18n="chooseDates">Күндерді таңдаңыз — бос бөлмелер осында шығады.</p>
+      </div>
+      <div class="room-grid" id="room-grid">
+        <article class="room-placeholder"><div class="placeholder-sun"></div><p data-i18n="searchToSee">Қолжетімді бөлмелерді көру үшін күндерді іздеңіз.</p><button class="text-cta" id="jump-search" data-i18n="chooseDatesBtn">КҮНДЕРДІ ТАҢДАУ ↗</button></article>
+      </div>
+    </section>
+
+    <section class="mar-promo-strip">
+      <div class="promo-seal">M<span>·</span></div><div><p class="eyebrow" data-i18n="platinumClub">MARISOL PLATINUM CLUB</p><h2 data-i18n="platinumTitle">КҮНГЕ ЖАҚЫН.<br><em>АРТЫҚШЫЛЫҚҚА ОДАН ДА ЖАҚЫН.</em></h2><p data-i18n="platinumCopy">10+ аяқталған сапардан кейін Platinum мәртебесі және әр брондауға 12% жеңілдік.</p></div><button class="promo-link" id="promo-details" data-i18n="learnMore">ТОЛЫҒЫРАҚ ↗</button>
+    </section>
+
+    <section class="mar-story" aria-label="Қонақ үй туралы"><div class="story-topline"><span>THE MARISOL / MIAMI BEACH</span><span>25° 46' 00.0" N</span><span>NO BAD DAYS</span></div><p class="story-quote" data-i18n="storyQuote">«Мұнда уақыт баяулайды. Ал түндер ұзарады.»</p><div class="deco-line"><span></span>✦<span></span></div><p class="story-copy" data-i18n="storyCopy">Күндіз — мұхит жағасы. Кешке — неон шамдары, музыка және қала әңгімелері. The Marisol — Vice City рухындағы демалыс мекені.</p></section>
+
+    <section class="booking-section" id="bookings-section" hidden><div class="section-heading"><div><p class="eyebrow ink-eyebrow" data-i18n="guestArea">ҚОНАҚ АЙМАҒЫ</p><h2 data-i18n="myTripsHeadline">СЕНІҢ<br><em>САПАРЛАРЫҢ.</em></h2></div><p class="section-note" data-i18n="myTripsIntro">Брондауларың, QR check-in билетің және сапар мәліметтері — бір жерде.</p></div><div id="booking-list" class="booking-list"><div class="loading-card" data-i18n="loading">ЖҮКТЕЛУДЕ...</div></div></section>
+
+    <section class="account-section" id="account-section" hidden><div class="account-cover"><span>THE MARISOL · PRIVATE GUEST FILE</span><span class="account-cover-mark">M</span></div><div id="account-content" class="account-content"><div class="loading-card" data-i18n="loading">ЖҮКТЕЛУДЕ...</div></div></section>
+  </main>
+
+  <footer class="mar-footer"><div class="footer-top"><p class="eyebrow" data-i18n="footerEyebrow">КЕЛЕСІ КҮН БАТУЫН ОСЫНДА ҚАРСЫ АЛ</p><h2 data-i18n="footerHeadline">ЖАҒАЛАУ<br><em>СЕНІ КҮТЕДІ.</em></h2><a class="footer-book" href="#booking-band" id="footer-book" data-i18n="bookNow">ҚАЗІР БРОНДАУ ↗</a></div><div class="footer-bottom"><a class="mar-wordmark footer-mark" href="/marisol"><span class="mar-sun-mark">M</span><span>THE MARISOL<small>VICE CITY · FLORIDA</small></span></a><span>© 2026 THE MARISOL HOTEL</span><a href="/" class="back-cyber" data-i18n="backMain">НЕГІЗГІ ЖҮЙЕГЕ ОРАЛУ ↗</a></div></footer>
+
+  <div class="mobile-search-dock"><button id="mobile-search-open"><span data-i18n="changeDates">КҮНДЕРДІ ӨЗГЕРТУ</span><b>↑</b></button></div>
+  <dialog id="mar-modal" class="mar-modal" aria-labelledby="modal-title"></dialog>
+  <div id="mar-toast" class="mar-toast" role="status" aria-live="polite"></div>
+  <script src="/static/marisol/marisol.js"></script>
+</body>
+</html>
