@@ -250,8 +250,14 @@ For testing the four guest membership tiers, see [DEMO_CLIENT_ACCOUNTS.md](DEMO_
 
 ## Visual themes and loyalty profiles
 
-Choose one of four visual themes from the header: Official & Premium, Daltonism-safe / High Accessibility, GTA VI Style, or Cyberpunk. All themes share one set of booking and role-based application functions. The logged-in guest's loyalty tier (None, Silver, Gold, or Platinum) adds a separate accent and badge shape. The Daltonism-safe theme uses distinct shapes, patterns, labels and icons in addition to color, strong keyboard focus, large touch targets and reduced-motion behavior. Official and Daltonism-safe modes do not run decorative particle animations. Cyberpunk and GTA VI keep their own visual effects, which are disabled when the operating system requests reduced motion.
+Choose one of four visual themes from the header: Official & Premium, Daltonism-safe / High Accessibility, GTA VI Style, or Cyberpunk. All themes share one set of booking and role-based application functions. The logged-in guest's loyalty tier (None, Silver, Gold, or Platinum) adds a separate accent and badge shape. The Daltonism-safe theme uses distinct shapes, patterns, labels and icons in addition to color, strong keyboard focus, large touch targets and reduced-motion behavior. All four styles now include a shared, page-wide particle field driven by local MP3 Web Audio metrics: GTA responds to bass hits, Cyberpunk to high-frequency transients, Official to smooth amplitude, and Daltonism uses slow geometric breathing with a Motion On/Off control. When the operating system requests reduced motion, the field freezes as a static pattern.
 
 ## Optional The GTA VI Style experience
 
 A Kazakh-first GTA VI Style interface is available at `http://127.0.0.1:8000/gta-vi`. It uses the exact same frontend application, API client, account/session logic and backend routes as the default interface. This means guest booking, My Reservations, loyalty, account management, all front-desk and manager tools, housekeeping, QR check-in, reviews, reports and pricing controls are available in both interfaces. The existing Cyberpunk theme remains unchanged. Choose `GTA VI Style` in the System Interface selector to use the alternate visual skin; its separate `AFTER DARK` button toggles the nighttime palette without changing the selected theme. See `GTA_VI_STYLE.md` for details.
+
+## Music player (GTA VI, Cyberpunk, Official and Daltonism)
+
+The floating music drawer is shared across all four visual styles. It supports the provided local MP3 libraries with beat-responsive visualizers and an optional Spotify Embed tab. Local MP3 visualizers use the Web Audio API; Spotify playback remains inside Spotify's own embed and is not synchronized to visuals.
+
+See [MUSIC_SETUP.md](MUSIC_SETUP.md) for playlist assignments, archive setup, playback controls, browser autoplay behavior and the beat-detection implementation. Install the supplied archives with `py tools/install_music.py ...` before testing local playback.

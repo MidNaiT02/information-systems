@@ -1,0 +1,6 @@
+hotel.db
+hotel.db-wal
+hotel.db-shm
+*.db
+*.db.gz
+*.log

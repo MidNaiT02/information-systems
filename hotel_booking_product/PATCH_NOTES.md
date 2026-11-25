@@ -22,7 +22,7 @@ This archive contains the current hotel-booking implementation. Earlier versions
 - The default `/` page remains **Cyberpunk / NEON OASIS**; `/gta-vi` is **GTA VI Style / THE MARISOL** with a separate After Dark on/off control.
 - Added `/official` for **Official & Premium** and `/daltonism` for **Daltonism-safe / High Accessibility**. All four pages load the same app code, API client, authentication, database and role-based guest/front-desk/manager features.
 - The shared language selector supports **Қазақша (KZ), English (EN) and Русский (RU)** and remembers the user's selection across pages. Cyberpunk and GTA VI default to Kazakh; Official and Daltonism-safe default to English until a language has been saved.
-- Dates, times and numeric formatting use the selected locale. The Official design uses a restrained 200 ms fade/slide transition. Daltonism-safe mode uses a gentle fade, large touch targets, strong keyboard focus, text/pattern/icon cues in addition to color, and no decorative particle animation or glitch transitions.
+- Dates, times and numeric formatting use the selected locale. The Official design uses a restrained 200 ms fade/slide transition. Daltonism-safe mode uses a gentle fade, large touch targets, strong keyboard focus, text/pattern/icon cues in addition to color, and no glitch transitions. Its background particles are slow geometric shapes with a Motion On/Off control and a static state for system reduced-motion preferences.
 - The Daltonism-safe style is designed for high contrast and color-vision accessibility, but a formal WCAG AAA audit and assistive-technology certification have not been performed.
 
 ## Security and deployment notes
@@ -42,7 +42,32 @@ This archive contains the current hotel-booking implementation. Earlier versions
 
 ## Validation
 
-- Python unit tests: 137 passed.
+- Python unit tests: 149 passed.
 - Python source compilation: passed.
 - JavaScript syntax checks: passed for all frontend JavaScript files.
 - Browser UI tests were not executed because the `jsdom` dependency declared in `tests/ui/package.json` is not installed in the available environment.
+
+
+## Music player integration
+
+- Added a shared floating music player to all four visual styles.
+- Added 71 MP3 track catalog entries with title, artist, album and duration metadata.
+- Added a local archive streaming endpoint with HTTP byte-range seeking.
+- Added Web Audio frequency/time-domain analysis and style-specific visualizers.
+- Added GTA VI, Cyberpunk and shared Official/Daltonism Spotify playlist embeds through Spotify's official iFrame API.
+- Kept Spotify playback separate from beat visualization to comply with Spotify's synchronization policy.
+- Added volume, mute, seek, previous/next, shuffle, repeat, track list, keyboard shortcuts, Media Session and local preferences.
+- Added a page-wide, beat-reactive particle layer shared across all four visual styles. The local audio analyzer publishes bass, mid, treble, RMS and transient metrics even while the floating player drawer is collapsed.
+- GTA particles expand and burst on bass hits; Cyberpunk fragments snap/glitch on high-frequency transients; Official gold bokeh responds gently to amplitude; Daltonism blue/orange geometry breathes slowly with a Motion On/Off control.
+- Added system reduced-motion handling: the particle canvas remains visible as a static wallpaper and the Daltonism motion toggle is disabled when the OS requests reduced motion.
+- Added reduced-motion behavior and accessible controls for Daltonism mode.
+- Added `MUSIC_SETUP.md`, `tools/install_music.py` and music streaming regression tests.
+
+
+## Left-to-right playback-only sound waves
+
+- Replaced the center-outward wave with a travelling waveform whose phase moves from the left edge to the right edge.
+- The full-page wave is hidden before local music starts and clears immediately when the track is paused or stopped.
+- GTA VI uses pink/orange bass-driven waves and left-to-right beat fronts; Cyberpunk uses cyan/magenta treble spikes and data pulses; Official uses smooth gold waves; Daltonism uses solid blue geometric bands.
+- Reduced-motion mode freezes the waveform while a local song is playing; no wave is shown when playback is inactive.
+- The compact player visualizer is also cleared while idle. Spotify Embed does not drive local audio visualizers.

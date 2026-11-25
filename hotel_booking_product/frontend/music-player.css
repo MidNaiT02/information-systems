@@ -1,0 +1,289 @@
+/* Floating music drawer: shared structure, theme-specific skins below. */
+#hotel-music-root {
+  --hm-panel: #151a25;
+  --hm-panel-2: #0d1119;
+  --hm-text: #f7f8fb;
+  --hm-muted: #aab5c5;
+  --hm-accent: #00ffff;
+  --hm-accent-2: #ff00ff;
+  --hm-border: rgba(0,255,255,.72);
+  --hm-shadow: 0 0 22px rgba(0,255,255,.22);
+  --hm-focus: #ffff00;
+  position: fixed;
+  z-index: 160;
+  right: 18px;
+  bottom: 18px;
+  color: var(--hm-text);
+  font-family: Inter, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  pointer-events: none;
+}
+#hotel-music-root *, #hotel-music-root *::before, #hotel-music-root *::after { box-sizing: border-box; }
+#hotel-music-root button, #hotel-music-root input, #hotel-music-root a { pointer-events: auto; font: inherit; }
+#hotel-music-root button { cursor: pointer; }
+#hotel-music-root [hidden] { display: none !important; }
+#hotel-music-root .hm-launch {
+  min-height: 54px;
+  min-width: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 17px;
+  color: #fff;
+  background: #111827;
+  border: 2px solid var(--hm-accent);
+  box-shadow: var(--hm-shadow);
+  border-radius: 999px;
+  font-weight: 800;
+  letter-spacing: .035em;
+}
+#hotel-music-root .hm-launch-icon { font-size: 23px; line-height: 1; }
+#hotel-music-root .hm-launch-state { width: 8px; height: 8px; border-radius: 50%; background: #7c8797; }
+#hotel-music-root[data-playing="true"][data-source="local"] .hm-launch-state { background: #42d392; box-shadow: 0 0 0 4px rgba(66,211,146,.16); }
+#hotel-music-root .hm-drawer {
+  position: absolute;
+  right: 0;
+  bottom: 68px;
+  width: min(390px, calc(100vw - 28px));
+  max-height: min(78vh, 720px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  color: var(--hm-text);
+  background: var(--hm-panel);
+  border: 1px solid var(--hm-border);
+  box-shadow: var(--hm-shadow), 0 16px 50px rgba(0,0,0,.35);
+  border-radius: 16px;
+  pointer-events: auto;
+  isolation: isolate;
+}
+#hotel-music-root .hm-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 16px 11px; border-bottom: 1px solid var(--hm-border); }
+#hotel-music-root .hm-brandline { display: grid; gap: 2px; min-width: 0; }
+#hotel-music-root .hm-kicker { color: var(--hm-muted); font-size: 10px; line-height: 1.35; letter-spacing: .12em; text-transform: uppercase; }
+#hotel-music-root .hm-brandline strong { font-size: 17px; letter-spacing: .035em; }
+#hotel-music-root .hm-close { display: grid; place-items: center; flex: 0 0 38px; width: 38px; height: 38px; border: 1px solid var(--hm-border); color: var(--hm-text); background: transparent; border-radius: 50%; font-size: 24px; line-height: 1; }
+#hotel-music-root .hm-source-tabs { display: grid; grid-template-columns: 1fr 1fr; padding: 10px 14px 0; gap: 8px; }
+#hotel-music-root .hm-source-tab { min-height: 40px; border: 1px solid var(--hm-border); color: var(--hm-text); background: transparent; border-radius: 8px; font-weight: 800; font-size: 11px; letter-spacing: .06em; }
+#hotel-music-root .hm-source-tab.is-active { color: #061219; background: var(--hm-accent); }
+#hotel-music-root .hm-local-panel, #hotel-music-root .hm-spotify-panel { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 12px 14px 14px; }
+#hotel-music-root .hm-track-head { display: flex; align-items: center; gap: 12px; padding: 7px 2px 11px; }
+#hotel-music-root .hm-record-art { position: relative; display: grid; place-items: center; width: 66px; height: 66px; flex: 0 0 66px; overflow: hidden; background: linear-gradient(140deg, var(--hm-accent-2), var(--hm-accent)); border: 1px solid var(--hm-border); }
+#hotel-music-root .hm-record-disc { position: absolute; width: 54px; height: 54px; border: 2px solid rgba(255,255,255,.8); border-radius: 50%; background: repeating-radial-gradient(circle, #111 0 3px, #333 4px 5px); }
+#hotel-music-root .hm-record-disc::after { content: ''; position: absolute; inset: 22px; border-radius: 50%; background: var(--hm-accent); }
+#hotel-music-root .hm-art-mark { z-index: 1; color: #fff; font-size: 22px; font-weight: 900; text-shadow: 0 1px 4px #000; }
+#hotel-music-root .hm-track-copy { display: grid; gap: 2px; min-width: 0; }
+#hotel-music-root .hm-track-copy .hm-kicker { font-size: 9px; }
+#hotel-music-root .hm-track-title { overflow: hidden; color: var(--hm-text); font-size: 15px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+#hotel-music-root .hm-track-artist { overflow: hidden; color: var(--hm-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+#hotel-music-root .hm-status { min-height: 16px; color: var(--hm-accent); font-size: 10px; }
+#hotel-music-root .hm-visual-wrap { position: relative; height: 74px; overflow: hidden; border: 1px solid var(--hm-border); background: var(--hm-panel-2); }
+#hotel-music-root .hm-visualizer { display: block; width: 100%; height: 100%; }
+#hotel-music-root .hm-visual-caption { position: absolute; right: 7px; bottom: 4px; color: var(--hm-muted); font: 9px/1.2 monospace; letter-spacing: .08em; pointer-events: none; }
+#hotel-music-root .hm-progress-block { padding: 11px 1px 3px; }
+#hotel-music-root .hm-range { display: block; width: 100%; height: 25px; margin: 0; accent-color: var(--hm-accent); cursor: pointer; }
+#hotel-music-root .hm-time-row { display: flex; justify-content: space-between; color: var(--hm-muted); font: 11px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace; }
+#hotel-music-root .hm-control-row { display: flex; align-items: center; justify-content: center; gap: 9px; padding: 9px 0; }
+#hotel-music-root .hm-control { display: grid; place-items: center; width: 39px; height: 39px; border: 1px solid var(--hm-border); color: var(--hm-text); background: transparent; border-radius: 9px; font-weight: 900; font-size: 20px; }
+#hotel-music-root .hm-control[aria-pressed="true"] { color: #061219; background: var(--hm-accent); }
+#hotel-music-root .hm-play { width: 48px; height: 48px; color: #061219; background: var(--hm-accent); border: 2px solid var(--hm-accent); border-radius: 50%; font-size: 20px; }
+#hotel-music-root .hm-volume-row { display: flex; align-items: center; gap: 9px; padding: 0 1px 10px; }
+#hotel-music-root .hm-volume-mute { flex: 0 0 40px; height: 38px; border: 1px solid var(--hm-border); border-radius: 9px; color: var(--hm-text); background: transparent; font-size: 15px; }
+#hotel-music-root .hm-volume { flex: 1; min-width: 55px; }
+#hotel-music-root .hm-volume-value { min-width: 36px; color: var(--hm-muted); text-align: right; font: 11px ui-monospace, monospace; }
+#hotel-music-root .hm-list-heading { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 1px 7px; border-top: 1px solid var(--hm-border); color: var(--hm-text); font-size: 12px; }
+#hotel-music-root .hm-list-heading span { color: var(--hm-muted); font: 11px ui-monospace, monospace; }
+#hotel-music-root .hm-track-list { display: grid; gap: 3px; max-height: 174px; overflow: auto; padding-right: 3px; }
+#hotel-music-root .hm-track-row { display: grid; grid-template-columns: 25px minmax(0,1fr) 34px; gap: 8px; align-items: center; min-height: 43px; width: 100%; padding: 5px 8px; border: 1px solid transparent; color: var(--hm-text); background: rgba(255,255,255,.035); text-align: left; }
+#hotel-music-root .hm-track-row.is-current { border-color: var(--hm-accent); background: rgba(0,255,255,.09); }
+#hotel-music-root .hm-track-index, #hotel-music-root .hm-track-row-duration { color: var(--hm-muted); font: 10px ui-monospace, monospace; }
+#hotel-music-root .hm-track-row-copy { display: grid; min-width: 0; gap: 1px; }
+#hotel-music-root .hm-track-row-copy strong { overflow: hidden; font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+#hotel-music-root .hm-track-row-copy small { overflow: hidden; color: var(--hm-muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+#hotel-music-root .hm-track-row-duration { text-align: right; }
+#hotel-music-root .hm-hint { margin: 9px 1px 0; color: var(--hm-muted); font-size: 10px; line-height: 1.45; }
+#hotel-music-root .hm-empty { padding: 14px; color: var(--hm-muted); font-size: 12px; }
+#hotel-music-root .hm-spotify-embed { min-height: 352px; overflow: hidden; border-radius: 9px; background: var(--hm-panel-2); }
+#hotel-music-root .hm-spotify-link { display: inline-block; margin-top: 10px; color: var(--hm-accent); text-decoration: underline; text-underline-offset: 3px; font-size: 12px; }
+#hotel-music-root button:focus-visible, #hotel-music-root a:focus-visible, #hotel-music-root input:focus-visible { outline: 3px solid var(--hm-focus); outline-offset: 3px; }
+#hotel-music-root .hm-close:hover, #hotel-music-root .hm-control:hover, #hotel-music-root .hm-source-tab:hover { filter: brightness(1.16); }
+
+/* GTA VI / Vice City: cassette radio, sunset colors and hard offset shadow. */
+:root[data-theme="gta"] #hotel-music-root {
+  --hm-panel: #fff0df; --hm-panel-2: #3b1a5a; --hm-text: #0e0e12; --hm-muted: #51404b;
+  --hm-accent: #ff2e88; --hm-accent-2: #ffa24c; --hm-border: #0e0e12;
+  --hm-shadow: 8px 8px 0 #0e0e12; --hm-focus: #0b2a3b;
+  font-family: Inter, Arial, sans-serif;
+}
+:root[data-theme="gta"] #hotel-music-root .hm-launch { color: #0e0e12; background: linear-gradient(110deg,#ff2e88,#ffa24c); border: 3px solid #0e0e12; border-radius: 999px; box-shadow: 5px 5px 0 #0e0e12; font-weight: 900; }
+:root[data-theme="gta"] #hotel-music-root .hm-drawer { border: 3px solid #0e0e12; border-radius: 18px; background: linear-gradient(155deg,#fff4e8,#ffd8d2); }
+:root[data-theme="gta"] #hotel-music-root .hm-header { border-bottom: 2px solid #0e0e12; }
+:root[data-theme="gta"] #hotel-music-root .hm-brandline strong,
+:root[data-theme="gta"] #hotel-music-root .hm-track-title { font-family: Anton, "Bebas Neue", sans-serif; text-transform: uppercase; letter-spacing: .025em; }
+:root[data-theme="gta"] #hotel-music-root .hm-close,
+:root[data-theme="gta"] #hotel-music-root .hm-control,
+:root[data-theme="gta"] #hotel-music-root .hm-volume-mute { color: #fff; background: #ff2e88; border: 2px solid #0e0e12; box-shadow: 3px 3px 0 #0e0e12; border-radius: 999px; }
+:root[data-theme="gta"] #hotel-music-root .hm-play { color: #fff; background: #ff2e88; }
+:root[data-theme="gta"] #hotel-music-root .hm-source-tab { color: #0e0e12; border: 2px solid #0e0e12; border-radius: 999px; }
+:root[data-theme="gta"] #hotel-music-root .hm-source-tab.is-active { background: #ff2e88; color: #fff; }
+:root[data-theme="gta"] #hotel-music-root .hm-record-art { border: 3px solid #0e0e12; background: linear-gradient(140deg,#ff2e88,#ffa24c); }
+:root[data-theme="gta"] #hotel-music-root .hm-visual-wrap { border: 2px solid #0e0e12; background: #3b1a5a; }
+:root[data-theme="gta"] #hotel-music-root .hm-track-row { color: #0e0e12; background: rgba(255,255,255,.62); border-radius: 8px; }
+:root[data-theme="gta"] #hotel-music-root .hm-track-row.is-current { border: 2px solid #0e0e12; background: #ffd0dc; }
+:root[data-theme="gta"] #hotel-music-root .hm-track-row-copy small { color: #5c4754; }
+:root[data-theme="gta"][data-after-dark="true"] #hotel-music-root { --hm-panel:#21142a; --hm-panel-2:#100f1a; --hm-text:#fff4ed; --hm-muted:#d0b9c9; --hm-border:#ff6b4a; --hm-focus:#fff; }
+:root[data-theme="gta"][data-after-dark="true"] #hotel-music-root .hm-drawer { background: linear-gradient(150deg,#2a1738,#101b2b); }
+:root[data-theme="gta"][data-after-dark="true"] #hotel-music-root .hm-track-row { color:#fff4ed; background:rgba(255,255,255,.08); }
+:root[data-theme="gta"][data-after-dark="true"] #hotel-music-root .hm-track-row-copy small { color:#d0b9c9; }
+
+/* Cyberpunk: angled HUD datapad, cyan / magenta oscilloscope. */
+:root[data-theme="cyberpunk"] #hotel-music-root { font-family: "Share Tech Mono", "Fira Code", monospace; }
+:root[data-theme="cyberpunk"] #hotel-music-root .hm-launch { border-radius: 0; clip-path: polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px); text-transform: uppercase; }
+:root[data-theme="cyberpunk"] #hotel-music-root .hm-drawer { border-radius: 0; clip-path: polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px); background: rgba(9,10,15,.97); }
+:root[data-theme="cyberpunk"] #hotel-music-root .hm-header { border-bottom-color: #00ffff; }
+:root[data-theme="cyberpunk"] #hotel-music-root .hm-brandline strong { font-family: Orbitron, Rajdhani, sans-serif; letter-spacing: .11em; }
+:root[data-theme="cyberpunk"] #hotel-music-root .hm-control,
+:root[data-theme="cyberpunk"] #hotel-music-root .hm-close,
+:root[data-theme="cyberpunk"] #hotel-music-root .hm-volume-mute,
+:root[data-theme="cyberpunk"] #hotel-music-root .hm-source-tab { border-radius: 0; clip-path: polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px); text-transform: uppercase; }
+:root[data-theme="cyberpunk"] #hotel-music-root .hm-play { border-radius: 0; clip-path: polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px); }
+:root[data-theme="cyberpunk"] #hotel-music-root .hm-source-tab.is-active { background: #ffff00; color: #090a0f; }
+:root[data-theme="cyberpunk"] #hotel-music-root .hm-visual-wrap::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(to bottom,transparent 0 4px,rgba(0,255,255,.07) 5px 6px); animation: hm-scanline 5s linear infinite; }
+:root[data-theme="cyberpunk"] #hotel-music-root .hm-record-art { background: linear-gradient(135deg,#00ffff,#ff00ff); }
+@keyframes hm-scanline { from { transform: translateY(-100%); } to { transform: translateY(100%); } }
+
+/* Official & Premium: refined white card, navy lines and muted gold. */
+:root[data-theme="official"] #hotel-music-root { --hm-panel:#fff; --hm-panel-2:#f8fafc; --hm-text:#0f172a; --hm-muted:#475569; --hm-accent:#d4af37; --hm-accent-2:#2563eb; --hm-border:#cbd5e1; --hm-shadow:0 8px 28px rgba(15,23,42,.2); --hm-focus:#1d4ed8; font-family:Inter,Arial,sans-serif; }
+:root[data-theme="official"] #hotel-music-root .hm-launch { background:#0f172a; color:#fff; border:1px solid #d4af37; border-radius:12px; }
+:root[data-theme="official"] #hotel-music-root .hm-drawer { border:1px solid #cbd5e1; border-radius:12px; }
+:root[data-theme="official"] #hotel-music-root .hm-brandline strong,
+:root[data-theme="official"] #hotel-music-root .hm-track-title { font-family:"Playfair Display",Georgia,serif; }
+:root[data-theme="official"] #hotel-music-root .hm-close,
+:root[data-theme="official"] #hotel-music-root .hm-control,
+:root[data-theme="official"] #hotel-music-root .hm-volume-mute { color:#0f172a; background:#fff; border:1px solid #d4af37; border-radius:9px; }
+:root[data-theme="official"] #hotel-music-root .hm-play { color:#fff; background:#0f172a; }
+:root[data-theme="official"] #hotel-music-root .hm-source-tab { color:#0f172a; border:1px solid #94a3b8; background:#fff; border-radius:8px; }
+:root[data-theme="official"] #hotel-music-root .hm-source-tab.is-active { background:#0f172a; color:#fff; border-color:#0f172a; }
+:root[data-theme="official"] #hotel-music-root .hm-track-row { color:#0f172a; background:#f8fafc; border-color:#e2e8f0; border-radius:8px; }
+:root[data-theme="official"] #hotel-music-root .hm-track-row.is-current { border-color:#d4af37; background:#fffbeb; }
+:root[data-theme="official"] #hotel-music-root .hm-track-row-copy small { color:#475569; }
+:root[data-theme="official"] #hotel-music-root .hm-record-art { border-radius:9px; background:linear-gradient(140deg,#0f172a,#d4af37); }
+:root[data-theme="official"] #hotel-music-root .hm-visual-wrap { background:#f8fafc; border-color:#cbd5e1; border-radius:8px; }
+
+/* Daltonism-safe: minimum 16px text, large labelled controls, non-color state. */
+:root[data-theme="accessible"] #hotel-music-root { --hm-panel:#fff; --hm-panel-2:#fff; --hm-text:#111827; --hm-muted:#1f2937; --hm-accent:#1e3a8a; --hm-accent-2:#ea580c; --hm-border:#1e3a8a; --hm-shadow:0 8px 26px rgba(17,24,39,.18); --hm-focus:#000; font-family:"Atkinson Hyperlegible",Inter,Arial,sans-serif; font-size:16px; }
+:root[data-theme="accessible"] #hotel-music-root .hm-launch { min-height:56px; color:#fff; background:#1e3a8a; border:2px solid #111827; border-radius:8px; box-shadow:0 3px 0 #111827; }
+:root[data-theme="accessible"] #hotel-music-root .hm-drawer { border:2px solid #1e3a8a; border-radius:10px; }
+:root[data-theme="accessible"] #hotel-music-root .hm-kicker,
+:root[data-theme="accessible"] #hotel-music-root .hm-track-copy .hm-kicker { color:#111827; font-size:13px; letter-spacing:.02em; }
+:root[data-theme="accessible"] #hotel-music-root .hm-brandline strong,
+:root[data-theme="accessible"] #hotel-music-root .hm-track-title,
+:root[data-theme="accessible"] #hotel-music-root .hm-track-row-copy strong { font-size:16px; font-weight:800; }
+:root[data-theme="accessible"] #hotel-music-root .hm-track-artist,
+:root[data-theme="accessible"] #hotel-music-root .hm-track-row-copy small,
+:root[data-theme="accessible"] #hotel-music-root .hm-hint { color:#111827; font-size:16px; }
+:root[data-theme="accessible"] #hotel-music-root .hm-control,
+:root[data-theme="accessible"] #hotel-music-root .hm-close,
+:root[data-theme="accessible"] #hotel-music-root .hm-volume-mute,
+:root[data-theme="accessible"] #hotel-music-root .hm-source-tab { min-width:48px; min-height:48px; color:#1e3a8a; background:#fff; border:2px solid #1e3a8a; border-radius:7px; font-size:17px; }
+:root[data-theme="accessible"] #hotel-music-root .hm-play { color:#fff; background:#1e3a8a; }
+:root[data-theme="accessible"] #hotel-music-root .hm-source-tab.is-active { color:#fff; background:#1e3a8a; }
+:root[data-theme="accessible"] #hotel-music-root .hm-track-row { min-height:48px; color:#111827; border:1px solid #1e3a8a; border-radius:6px; background:#fff; }
+:root[data-theme="accessible"] #hotel-music-root .hm-track-row.is-current { border:3px solid #1e3a8a; background:#eff6ff; }
+:root[data-theme="accessible"] #hotel-music-root .hm-track-index,
+:root[data-theme="accessible"] #hotel-music-root .hm-track-row-duration,
+:root[data-theme="accessible"] #hotel-music-root .hm-volume-value { color:#111827; font-size:14px; }
+:root[data-theme="accessible"] #hotel-music-root .hm-range { min-height:30px; accent-color:#1e3a8a; }
+:root[data-theme="accessible"] #hotel-music-root .hm-record-art { border:2px solid #1e3a8a; background:#ea580c; }
+:root[data-theme="accessible"] #hotel-music-root .hm-visual-wrap { border:2px solid #1e3a8a; background:#fff; }
+:root[data-theme="accessible"] #hotel-music-root .hm-status { color:#111827; font-size:14px; font-weight:800; }
+:root[data-theme="accessible"] #hotel-music-root .hm-launch-state { border:1px solid #111827; }
+:root[data-theme="accessible"] #hotel-music-root button:focus-visible,
+:root[data-theme="accessible"] #hotel-music-root a:focus-visible,
+:root[data-theme="accessible"] #hotel-music-root input:focus-visible { outline:4px solid #000 !important; outline-offset:3px; }
+:root[data-theme="accessible"] #hotel-music-root .hm-close:hover,
+:root[data-theme="accessible"] #hotel-music-root .hm-control:hover,
+:root[data-theme="accessible"] #hotel-music-root .hm-source-tab:hover { filter:none; text-decoration:underline; }
+
+@media (max-width: 560px) {
+  #hotel-music-root { right: 12px; bottom: 12px; }
+  #hotel-music-root .hm-drawer { position: fixed; left: 8px; right: 8px; bottom: 8px; width: auto; max-height: min(84dvh, 760px); border-radius: 14px; }
+  #hotel-music-root .hm-local-panel, #hotel-music-root .hm-spotify-panel { padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+  #hotel-music-root .hm-launch { min-height: 50px; padding: 8px 13px; }
+  :root[data-theme="accessible"] #hotel-music-root .hm-track-list { max-height: 145px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #hotel-music-root *, #hotel-music-root *::before, #hotel-music-root *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  :root[data-theme="accessible"] #hotel-music-root .hm-visualizer { image-rendering: auto; }
+}
+
+/* Icon labels are visually compact in other themes and fully visible in Daltonism mode. */
+#hotel-music-root .hm-control-label { display:none; }
+:root[data-theme="accessible"] #hotel-music-root .hm-control-row { gap:5px; }
+:root[data-theme="accessible"] #hotel-music-root .hm-control { width:auto; min-width:48px; min-height:54px; padding:5px 7px; display:flex; flex-direction:column; justify-content:center; gap:2px; }
+:root[data-theme="accessible"] #hotel-music-root .hm-control-label { display:block; font-size:11px; line-height:1.1; white-space:normal; }
+:root[data-theme="accessible"] #hotel-music-root .hm-control-icon { font-size:18px; line-height:1; }
+:root[data-theme="accessible"] #hotel-music-root .hm-volume-mute { width:auto; min-width:48px; height:auto; min-height:48px; padding:4px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
+:root[data-theme="accessible"] #hotel-music-root .hm-volume-mute .hm-control-label { display:block; font-size:10px; }
+:root[data-theme="accessible"] #hotel-music-root .hm-control-row .hm-play { min-width:62px; }
+:root[data-theme="gta"] #hotel-music-root[data-playing="true"][data-source="local"] .hm-record-disc { animation:hm-record-spin 4s linear infinite; transform:scale(var(--hm-beat-scale, 1)); }
+:root[data-theme="gta"] #hotel-music-root[data-playing="true"][data-source="local"] .hm-record-disc::after { box-shadow:0 0 12px #ff2e88; }
+:root[data-theme="cyberpunk"] #hotel-music-root .hm-visual-wrap::after { animation-play-state:paused; }
+:root[data-theme="cyberpunk"] #hotel-music-root[data-playing="true"][data-source="local"] .hm-visual-wrap::after { animation-play-state:running; }
+@keyframes hm-record-spin { from { transform:rotate(0deg) scale(var(--hm-beat-scale, 1)); } to { transform:rotate(360deg) scale(var(--hm-beat-scale, 1)); } }
+
+/* Contrast refinements for small status and link text. */
+:root[data-theme="gta"] #hotel-music-root .hm-status,
+:root[data-theme="gta"] #hotel-music-root .hm-spotify-link { color: #74133e; }
+:root[data-theme="gta"] #hotel-music-root .hm-close,
+:root[data-theme="gta"] #hotel-music-root .hm-control,
+:root[data-theme="gta"] #hotel-music-root .hm-volume-mute { color: #0e0e12; }
+:root[data-theme="gta"] #hotel-music-root .hm-source-tab.is-active { color: #0e0e12; }
+:root[data-theme="official"] #hotel-music-root .hm-status,
+:root[data-theme="official"] #hotel-music-root .hm-spotify-link { color: #1e3a8a; }
+:root[data-theme="accessible"] #hotel-music-root .hm-range { min-height: 48px; }
+:root[data-theme="accessible"] #hotel-music-root .hm-range::-webkit-slider-runnable-track { height: 7px; background: #1e3a8a; border: 1px solid #111827; }
+:root[data-theme="accessible"] #hotel-music-root .hm-range::-webkit-slider-thumb { width: 22px; height: 22px; margin-top: -9px; border: 2px solid #111827; border-radius: 3px; background: #ea580c; -webkit-appearance: none; }
+:root[data-theme="accessible"] #hotel-music-root .hm-range::-moz-range-track { height: 7px; background: #1e3a8a; border: 1px solid #111827; }
+:root[data-theme="accessible"] #hotel-music-root .hm-range::-moz-range-thumb { width: 20px; height: 20px; border: 2px solid #111827; border-radius: 3px; background: #ea580c; }
+
+/* Daltonism-only motion preference control: explicit, keyboard-operable and high contrast. */
+#hotel-music-root .hm-motion-row {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin:2px 0 8px;
+  padding:8px 2px;
+  color:var(--hm-muted);
+  font-size:11px;
+}
+#hotel-music-root .hm-motion-toggle {
+  min-width:112px;
+  min-height:42px;
+  padding:7px 10px;
+  border:1px solid var(--hm-border);
+  border-radius:8px;
+  color:var(--hm-text);
+  background:var(--hm-panel-2);
+  font-size:11px;
+  font-weight:800;
+}
+#hotel-music-root .hm-motion-toggle:disabled { cursor:not-allowed; opacity:1; border-style:dashed; }
+:root[data-theme="accessible"] #hotel-music-root .hm-motion-row { color:#111827; font-size:14px; }
+:root[data-theme="accessible"] #hotel-music-root .hm-motion-toggle {
+  min-width:142px;
+  min-height:48px;
+  border:2px solid #111827;
+  border-radius:6px;
+  color:#fff;
+  background:#1E3A8A;
+  font-size:14px;
+}
+:root[data-theme="accessible"] #hotel-music-root .hm-motion-toggle[aria-pressed="false"] { color:#111827; background:#fff; }
+:root[data-theme="accessible"] #hotel-music-root .hm-motion-toggle:focus-visible { outline:4px solid #000; outline-offset:3px; }
+@media (max-width:560px) {
+  #hotel-music-root .hm-motion-row { align-items:flex-start; flex-direction:column; }
+  #hotel-music-root .hm-motion-toggle { min-height:48px; }
+}

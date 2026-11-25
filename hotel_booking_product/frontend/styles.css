@@ -468,7 +468,8 @@ input[type="checkbox"] { width: auto; accent-color: var(--brass); }
 :root[data-theme="accessible"] .demo-account { border-bottom:2px solid var(--line); }
 @media (prefers-reduced-motion: reduce) {
   .loyalty-pill.tier-platinum { animation:none; }
-  #ambience-canvas { display:none; }
+  /* Keep the particle canvas visible as a static wallpaper; ambience.js freezes it. */
+  #ambience-canvas { display:block; }
 }
 
 /* Extra polish per visual direction while retaining each theme's readable contrast. */
@@ -760,53 +761,3 @@ input[type="checkbox"] { width: auto; accent-color: var(--brass); }
   :root[data-theme="cyberpunk"] .nights { grid-column:1/-1; }
 }
 @media(max-width:520px) { :root[data-theme="cyberpunk"] .searchbar { grid-template-columns:1fr; } :root[data-theme="cyberpunk"] .searchbar .btn { grid-column:auto; } }
-
-
-/* ================= FAVORITES AND ROOM COMPARISON ================= */
-.room-extra-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-.room-extra-actions .btn {
-  font-size: .85rem;
-  padding: .55rem .8rem;
-}
-.room-extra-actions .btn[aria-pressed="true"] {
-  border-color: var(--brass, currentColor);
-}
-.room-comparison-controls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin: 20px 0;
-  padding: 16px;
-  border: 1px solid var(--line);
-  background: var(--surface-2);
-}
-.room-comparison-controls p { margin: 0; }
-.comparison-table-wrap { max-width: 100%; overflow-x: auto; }
-.comparison-table {
-  width: 100%;
-  min-width: 420px;
-  border-collapse: collapse;
-}
-.comparison-table th,
-.comparison-table td {
-  padding: 12px;
-  border: 1px solid var(--line);
-  text-align: center;
-}
-.comparison-table thead th,
-.comparison-table tbody th {
-  background: var(--surface-2);
-}
-.comparison-table tbody th { text-align: left; }
-@media (max-width: 600px) {
-  .room-extra-actions { width: 100%; }
-  .room-extra-actions .btn { flex: 1 1 auto; }
-  .room-comparison-controls { align-items: stretch; flex-direction: column; }
-}

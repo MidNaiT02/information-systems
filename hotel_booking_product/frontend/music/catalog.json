@@ -1,0 +1,650 @@
+{
+  "version": 1,
+  "playlists": {
+    "gta": [
+      {
+        "id": "0",
+        "title": "Flower In A Hurricane (feat. Tame Impala, SZA, King Gizzard & the Lizard Wizard) [From GTAVI: Original Score]",
+        "artist": "Justice/Tame Impala/SZA/Grand Theft Auto VI/King Gizzard & The Lizard Wizard",
+        "album": "Flower In A Hurricane (feat. Tame Impala, SZA, King Gizzard & the Lizard Wizard) [From GTAVI: Original Score]",
+        "duration": 228.1,
+        "url": "/music/gta/0",
+        "file": "Flower In A Hurricane (feat. Tame Impala, SZA, King Gizzard & the Lizard Wizard) [From GTAVI: Original Score].mp3"
+      },
+      {
+        "id": "1",
+        "title": "Neverender",
+        "artist": "Justice/Tame Impala",
+        "album": "Neverender",
+        "duration": 266.53,
+        "url": "/music/gta/1",
+        "file": "Neverender.mp3"
+      },
+      {
+        "id": "2",
+        "title": "Suzuki (from GTAVI: The Album)",
+        "artist": "Fuerza Regida/Grand Theft Auto VI",
+        "album": "Suzuki (from GTAVI: The Album)",
+        "duration": 113.61,
+        "url": "/music/gta/2",
+        "file": "Suzuki (from GTAVI: The Album).mp3"
+      },
+      {
+        "id": "3",
+        "title": "Last Thing You Need (from GTAVI: The Album)",
+        "artist": "Morgan Wallen/Grand Theft Auto VI",
+        "album": "Last Thing You Need (from GTAVI: The Album)",
+        "duration": 196.05,
+        "url": "/music/gta/3",
+        "file": "Last Thing You Need (from GTAVI: The Album).mp3"
+      },
+      {
+        "id": "4",
+        "title": "Sexy Magic (from GTAVI: The Album)",
+        "artist": "CA7RIEL & Paco Amoroso/PinkPantheress/Fred again../Etienne de Crécy /Grand Theft Auto VI",
+        "album": "Sexy Magic (from GTAVI: The Album)",
+        "duration": 195.94,
+        "url": "/music/gta/4",
+        "file": "Sexy Magic (from GTAVI: The Album).mp3"
+      },
+      {
+        "id": "5",
+        "title": "Don’t Chart",
+        "artist": "Cardi B",
+        "album": "Don’t Chart",
+        "duration": 164.26,
+        "url": "/music/gta/5",
+        "file": "Don’t Chart.mp3"
+      },
+      {
+        "id": "6",
+        "title": "Go Easy",
+        "artist": "Dua Lipa",
+        "album": "Go Easy",
+        "duration": 192.34,
+        "url": "/music/gta/6",
+        "file": "Go Easy.mp3"
+      },
+      {
+        "id": "7",
+        "title": "Power Trip",
+        "artist": "JENNIE",
+        "album": "Power Trip",
+        "duration": 196.78,
+        "url": "/music/gta/7",
+        "file": "Power Trip.mp3"
+      },
+      {
+        "id": "8",
+        "title": "Swimming Pools (Drank)",
+        "artist": "Kendrick Lamar",
+        "album": "Swimming Pools (Drank)",
+        "duration": 247.88,
+        "url": "/music/gta/8",
+        "file": "Swimming Pools (Drank).mp3"
+      },
+      {
+        "id": "9",
+        "title": "Blood In Your Eyes",
+        "artist": "Tove Lo",
+        "album": "Blood In Your Eyes",
+        "duration": 161.28,
+        "url": "/music/gta/9",
+        "file": "Blood In Your Eyes.mp3"
+      },
+      {
+        "id": "10",
+        "title": "Crazy For You",
+        "artist": "Lana Del Rey",
+        "album": "Crazy For You",
+        "duration": 223.74,
+        "url": "/music/gta/10",
+        "file": "Crazy For You.mp3"
+      },
+      {
+        "id": "11",
+        "title": "Inner Light",
+        "artist": "Elderbrook/Bob Moses",
+        "album": "Inner Light",
+        "duration": 258.04,
+        "url": "/music/gta/11",
+        "file": "Inner Light.mp3"
+      },
+      {
+        "id": "12",
+        "title": "Legendary Lovers",
+        "artist": "Katy Perry",
+        "album": "Legendary Lovers",
+        "duration": 224.26,
+        "url": "/music/gta/12",
+        "file": "Legendary Lovers.mp3"
+      },
+      {
+        "id": "13",
+        "title": "Unforgettable",
+        "artist": "French Montana/Swae Lee",
+        "album": "Unforgettable",
+        "duration": 233.95,
+        "url": "/music/gta/13",
+        "file": "Unforgettable.mp3"
+      },
+      {
+        "id": "14",
+        "title": "Flashing Lights",
+        "artist": "Kanye West/Dwele",
+        "album": "Flashing Lights",
+        "duration": 237.56,
+        "url": "/music/gta/14",
+        "file": "Flashing Lights.mp3"
+      },
+      {
+        "id": "15",
+        "title": "Señorita",
+        "artist": "Shawn Mendes/Camila Cabello",
+        "album": "Señorita",
+        "duration": 191.01,
+        "url": "/music/gta/15",
+        "file": "Señorita.mp3"
+      },
+      {
+        "id": "16",
+        "title": "Sports car",
+        "artist": "Tate McRae",
+        "album": "Sports car",
+        "duration": 165.09,
+        "url": "/music/gta/16",
+        "file": "Sports car.mp3"
+      },
+      {
+        "id": "17",
+        "title": "03' Bonnie & Clyde",
+        "artist": "JAŸ-Z/Beyoncé",
+        "album": "03' Bonnie & Clyde",
+        "duration": 29.78,
+        "url": "/music/gta/17",
+        "file": "03' Bonnie & Clyde.mp3"
+      },
+      {
+        "id": "18",
+        "title": "Burn This Shit Down (from GTAVI: The Album)",
+        "artist": "Travis Scott/Grand Theft Auto VI",
+        "album": "Burn This Shit Down (from GTAVI: The Album)",
+        "duration": 260.05,
+        "url": "/music/gta/18",
+        "file": "Burn This Shit Down (from GTAVI: The Album).mp3"
+      },
+      {
+        "id": "19",
+        "title": "Housewife",
+        "artist": "Tate McRae",
+        "album": "Housewife",
+        "duration": 208.85,
+        "url": "/music/gta/19",
+        "file": "Housewife.mp3"
+      }
+    ],
+    "cyberpunk": [
+      {
+        "id": "0",
+        "title": "High Forever - Marlon Hoffstadt Remix",
+        "artist": "Petite Meller/Marlon Hoffstadt",
+        "album": "High Forever - Marlon Hoffstadt Remix",
+        "duration": 347.72,
+        "url": "/music/cyberpunk/0",
+        "file": "High Forever - Marlon Hoffstadt Remix.mp3"
+      },
+      {
+        "id": "1",
+        "title": "Let You Down",
+        "artist": "Dawid Podsiadło",
+        "album": "Let You Down",
+        "duration": 230.11,
+        "url": "/music/cyberpunk/1",
+        "file": "Let You Down.mp3"
+      },
+      {
+        "id": "2",
+        "title": "I Really Want to Stay at Your House",
+        "artist": "Rosa Walton/Hallie Coggins",
+        "album": "I Really Want to Stay at Your House",
+        "duration": 246.7,
+        "url": "/music/cyberpunk/2",
+        "file": "I Really Want to Stay at Your House.mp3"
+      },
+      {
+        "id": "3",
+        "title": "Never Fade Away",
+        "artist": "SAMURAI/Refused",
+        "album": "Never Fade Away",
+        "duration": 190.28,
+        "url": "/music/cyberpunk/3",
+        "file": "Never Fade Away.mp3"
+      },
+      {
+        "id": "4",
+        "title": "You Can't Run From Me (from Cyberpunk: Edgerunners Season 2)",
+        "artist": "Rico Nasty",
+        "album": "You Can't Run From Me (from Cyberpunk: Edgerunners Season 2)",
+        "duration": 234.29,
+        "url": "/music/cyberpunk/4",
+        "file": "You Can't Run From Me (from Cyberpunk: Edgerunners Season 2).mp3"
+      },
+      {
+        "id": "5",
+        "title": "Never Fade Away (SAMURAI Cover)",
+        "artist": "P.T. Adamczyk/Olga Jankowska",
+        "album": "Never Fade Away (SAMURAI Cover)",
+        "duration": 286.33,
+        "url": "/music/cyberpunk/5",
+        "file": "Never Fade Away (SAMURAI Cover).mp3"
+      },
+      {
+        "id": "6",
+        "title": "Never Looking Back (From \"Cyberpunk 2077: Phantom Liberty\" Score)",
+        "artist": "P.T. Adamczyk",
+        "album": "Never Looking Back (From \"Cyberpunk 2077: Phantom Liberty\" Score)",
+        "duration": 228.18,
+        "url": "/music/cyberpunk/6",
+        "file": "Never Looking Back (From \"Cyberpunk 2077: Phantom Liberty\" Score).mp3"
+      },
+      {
+        "id": "7",
+        "title": "In Love With Myself",
+        "artist": "Petite Meller/Kalman Chodakiewitz/Eli Shiffman",
+        "album": "In Love With Myself",
+        "duration": 173.04,
+        "url": "/music/cyberpunk/7",
+        "file": "In Love With Myself.mp3"
+      },
+      {
+        "id": "8",
+        "title": "Watson (feat. Oslo Green)",
+        "artist": "Petite Meller/Oslo Green",
+        "album": "Watson (feat. Oslo Green)",
+        "duration": 29.78,
+        "url": "/music/cyberpunk/8",
+        "file": "Watson (feat. Oslo Green).mp3"
+      },
+      {
+        "id": "9",
+        "title": "Phantom Liberty",
+        "artist": "Dawid Podsiadło/P.T. Adamczyk",
+        "album": "Phantom Liberty",
+        "duration": 348.6,
+        "url": "/music/cyberpunk/9",
+        "file": "Phantom Liberty.mp3"
+      },
+      {
+        "id": "10",
+        "title": "Major Crimes",
+        "artist": "HEALTH/Window Weather",
+        "album": "Major Crimes",
+        "duration": 213.45,
+        "url": "/music/cyberpunk/10",
+        "file": "Major Crimes.mp3"
+      },
+      {
+        "id": "11",
+        "title": "4ÆM",
+        "artist": "Grimes",
+        "album": "4ÆM",
+        "duration": 600.08,
+        "url": "/music/cyberpunk/11",
+        "file": "4ÆM.mp3"
+      },
+      {
+        "id": "12",
+        "title": "Been Good To Know Ya",
+        "artist": "Marcin Przybyłowicz",
+        "album": "Been Good To Know Ya",
+        "duration": 231.47,
+        "url": "/music/cyberpunk/12",
+        "file": "Been Good To Know Ya.mp3"
+      },
+      {
+        "id": "13",
+        "title": "A Rusty Dream (from Cyberpunk: Edgerunners 2)",
+        "artist": "DOUDOU",
+        "album": "A Rusty Dream (from Cyberpunk: Edgerunners 2)",
+        "duration": 301.56,
+        "url": "/music/cyberpunk/13",
+        "file": "A Rusty Dream (from Cyberpunk: Edgerunners 2).mp3"
+      },
+      {
+        "id": "14",
+        "title": "Little Stranger",
+        "artist": "Dawid Podsiadło",
+        "album": "Little Stranger",
+        "duration": 297.64,
+        "url": "/music/cyberpunk/14",
+        "file": "Little Stranger.mp3"
+      }
+    ],
+    "upbeat": [
+      {
+        "id": "0",
+        "title": "Beat It",
+        "artist": "Michael Jackson",
+        "album": "Beat It",
+        "duration": 257.96,
+        "url": "/music/upbeat/0",
+        "file": "Beat It.mp3"
+      },
+      {
+        "id": "1",
+        "title": "There's Nothing Holdin' Me Back",
+        "artist": "Shawn Mendes",
+        "album": "There's Nothing Holdin' Me Back",
+        "duration": 199.5,
+        "url": "/music/upbeat/1",
+        "file": "There's Nothing Holdin' Me Back.mp3"
+      },
+      {
+        "id": "2",
+        "title": "好きすぎて滅！",
+        "artist": "M!LK",
+        "album": "好きすぎて滅！",
+        "duration": 319.58,
+        "url": "/music/upbeat/2",
+        "file": "好きすぎて滅！.mp3"
+      },
+      {
+        "id": "3",
+        "title": "とくべチュ、して",
+        "artist": "=LOVE",
+        "album": "とくべチュ、して",
+        "duration": 177.21,
+        "url": "/music/upbeat/3",
+        "file": "とくべチュ、して.mp3"
+      },
+      {
+        "id": "4",
+        "title": "Theater",
+        "artist": "King & Prince",
+        "album": "Theater",
+        "duration": 153.39,
+        "url": "/music/upbeat/4",
+        "file": "Theater.mp3"
+      },
+      {
+        "id": "5",
+        "title": "IRIS OUT",
+        "artist": "Kenshi Yonezu",
+        "album": "IRIS OUT",
+        "duration": 151.61,
+        "url": "/music/upbeat/5",
+        "file": "IRIS OUT.mp3"
+      },
+      {
+        "id": "6",
+        "title": "夢中",
+        "artist": "BE:FIRST",
+        "album": "夢中",
+        "duration": 172.67,
+        "url": "/music/upbeat/6",
+        "file": "夢中.mp3"
+      },
+      {
+        "id": "7",
+        "title": "ROSE",
+        "artist": "HANA",
+        "album": "ROSE",
+        "duration": 165.56,
+        "url": "/music/upbeat/7",
+        "file": "ROSE.mp3"
+      },
+      {
+        "id": "8",
+        "title": "GOOD DAY",
+        "artist": "Mrs. GREEN APPLE",
+        "album": "GOOD DAY",
+        "duration": 259.16,
+        "url": "/music/upbeat/8",
+        "file": "GOOD DAY.mp3"
+      },
+      {
+        "id": "9",
+        "title": "大不正解",
+        "artist": "back number",
+        "album": "大不正解",
+        "duration": 209.71,
+        "url": "/music/upbeat/9",
+        "file": "大不正解.mp3"
+      },
+      {
+        "id": "10",
+        "title": "飛行艇",
+        "artist": "King Gnu",
+        "album": "飛行艇",
+        "duration": 265.43,
+        "url": "/music/upbeat/10",
+        "file": "飛行艇.mp3"
+      },
+      {
+        "id": "11",
+        "title": "会心の一撃",
+        "artist": "RADWIMPS",
+        "album": "会心の一撃",
+        "duration": 273.5,
+        "url": "/music/upbeat/11",
+        "file": "会心の一撃.mp3"
+      },
+      {
+        "id": "12",
+        "title": "Surges",
+        "artist": "Orangestar/Kase/ルワン",
+        "album": "Surges",
+        "duration": 145.55,
+        "url": "/music/upbeat/12",
+        "file": "Surges.mp3"
+      },
+      {
+        "id": "13",
+        "title": "ファンファーレ",
+        "artist": "Koji Tamaki",
+        "album": "ファンファーレ",
+        "duration": 272.98,
+        "url": "/music/upbeat/13",
+        "file": "ファンファーレ.mp3"
+      },
+      {
+        "id": "14",
+        "title": "オドロウゼ！",
+        "artist": "Snow Man",
+        "album": "オドロウゼ！",
+        "duration": 154.25,
+        "url": "/music/upbeat/14",
+        "file": "オドロウゼ！.mp3"
+      },
+      {
+        "id": "15",
+        "title": "3XL",
+        "artist": "Number_i",
+        "album": "3XL",
+        "duration": 165.51,
+        "url": "/music/upbeat/15",
+        "file": "3XL.mp3"
+      },
+      {
+        "id": "16",
+        "title": "盛れ！ミ・アモーレ",
+        "artist": "Juice=Juice",
+        "album": "盛れ！ミ・アモーレ",
+        "duration": 246.36,
+        "url": "/music/upbeat/16",
+        "file": "盛れ！ミ・アモーレ.mp3"
+      },
+      {
+        "id": "17",
+        "title": "Tokimeki",
+        "artist": "Vaundy",
+        "album": "Tokimeki",
+        "duration": 212.06,
+        "url": "/music/upbeat/17",
+        "file": "Tokimeki.mp3"
+      },
+      {
+        "id": "18",
+        "title": "倍倍FIGHT!",
+        "artist": "CANDY TUNE",
+        "album": "倍倍FIGHT!",
+        "duration": 153.13,
+        "url": "/music/upbeat/18",
+        "file": "倍倍FIGHT!.mp3"
+      },
+      {
+        "id": "19",
+        "title": "ひゅるりらぱっぱ - HYURURIRAPAPPA",
+        "artist": "tuki.",
+        "album": "ひゅるりらぱっぱ - HYURURIRAPAPPA",
+        "duration": 200.28,
+        "url": "/music/upbeat/19",
+        "file": "ひゅるりらぱっぱ - HYURURIRAPAPPA.mp3"
+      },
+      {
+        "id": "20",
+        "title": "ノンフィクションズ",
+        "artist": "Da-iCE",
+        "album": "ノンフィクションズ",
+        "duration": 239.33,
+        "url": "/music/upbeat/20",
+        "file": "ノンフィクションズ.mp3"
+      },
+      {
+        "id": "21",
+        "title": "Talking Box (Dirty Pop Remix)",
+        "artist": "WurtS",
+        "album": "Talking Box (Dirty Pop Remix)",
+        "duration": 29.78,
+        "url": "/music/upbeat/21",
+        "file": "Talking Box (Dirty Pop Remix).mp3"
+      },
+      {
+        "id": "22",
+        "title": "Again",
+        "artist": "Mr.Children",
+        "album": "Again",
+        "duration": 358.77,
+        "url": "/music/upbeat/22",
+        "file": "Again.mp3"
+      },
+      {
+        "id": "23",
+        "title": "かわいいだけじゃだめですか？",
+        "artist": "CUTIE STREET",
+        "album": "かわいいだけじゃだめですか？",
+        "duration": 194.35,
+        "url": "/music/upbeat/23",
+        "file": "かわいいだけじゃだめですか？.mp3"
+      },
+      {
+        "id": "24",
+        "title": "الجاى بتاعى",
+        "artist": "Houda",
+        "album": "الجاى بتاعى",
+        "duration": 745.67,
+        "url": "/music/upbeat/24",
+        "file": "الجاى بتاعى.mp3"
+      },
+      {
+        "id": "25",
+        "title": "タッチ",
+        "artist": "Koshi Inaba",
+        "album": "タッチ",
+        "duration": 315.72,
+        "url": "/music/upbeat/25",
+        "file": "タッチ.mp3"
+      },
+      {
+        "id": "26",
+        "title": "爆裂愛してる",
+        "artist": "M!LK",
+        "album": "爆裂愛してる",
+        "duration": 204.3,
+        "url": "/music/upbeat/26",
+        "file": "爆裂愛してる.mp3"
+      },
+      {
+        "id": "27",
+        "title": "ラブソングに襲われる",
+        "artist": "=LOVE",
+        "album": "ラブソングに襲われる",
+        "duration": 218.62,
+        "url": "/music/upbeat/27",
+        "file": "ラブソングに襲われる.mp3"
+      },
+      {
+        "id": "28",
+        "title": "HOWL",
+        "artist": "Ayumu Imazu",
+        "album": "HOWL",
+        "duration": 191.71,
+        "url": "/music/upbeat/28",
+        "file": "HOWL.mp3"
+      },
+      {
+        "id": "29",
+        "title": "BOW AND ARROW",
+        "artist": "Kenshi Yonezu",
+        "album": "BOW AND ARROW",
+        "duration": 175.78,
+        "url": "/music/upbeat/29",
+        "file": "BOW AND ARROW.mp3"
+      },
+      {
+        "id": "30",
+        "title": "طول منا عالي طول منا ناجح",
+        "artist": "حمو المرشدي",
+        "album": "طول منا عالي طول منا ناجح",
+        "duration": 292.68,
+        "url": "/music/upbeat/30",
+        "file": "طول منا عالي طول منا ناجح.mp3"
+      },
+      {
+        "id": "31",
+        "title": "Tiger",
+        "artist": "HANA",
+        "album": "Tiger",
+        "duration": 190.15,
+        "url": "/music/upbeat/31",
+        "file": "Tiger.mp3"
+      },
+      {
+        "id": "32",
+        "title": "Carrying Happiness",
+        "artist": "Mrs. GREEN APPLE",
+        "album": "Carrying Happiness",
+        "duration": 224.1,
+        "url": "/music/upbeat/32",
+        "file": "Carrying Happiness.mp3"
+      },
+      {
+        "id": "33",
+        "title": "doppelgänger",
+        "artist": "Creepy Nuts",
+        "album": "doppelgänger",
+        "duration": 167.08,
+        "url": "/music/upbeat/33",
+        "file": "doppelgänger.mp3"
+      },
+      {
+        "id": "34",
+        "title": "TWILIGHT!!!",
+        "artist": "King Gnu",
+        "album": "TWILIGHT!!!",
+        "duration": 217.21,
+        "url": "/music/upbeat/34",
+        "file": "TWILIGHT!!!.mp3"
+      },
+      {
+        "id": "35",
+        "title": "君と羊と青",
+        "artist": "RADWIMPS",
+        "album": "君と羊と青",
+        "duration": 163.76,
+        "url": "/music/upbeat/35",
+        "file": "君と羊と青.mp3"
+      }
+    ]
+  }
+}

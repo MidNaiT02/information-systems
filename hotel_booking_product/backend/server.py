@@ -19,6 +19,7 @@ import db
 import features
 import security
 import enhancements
+import music
 
 
 FRONTEND = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend")
@@ -33,7 +34,7 @@ SECURITY_HEADERS = [
     ("Referrer-Policy", "no-referrer"),
     ("X-Frame-Options", "DENY"),
     ("Content-Security-Policy",
-     "default-src 'self'; img-src 'self' data:; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' https://cdnjs.cloudflare.com; "
+     "default-src 'self'; img-src 'self' data:; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' https://cdnjs.cloudflare.com https://open.spotify.com; frame-src https://open.spotify.com; "
      "base-uri 'none'; form-action 'self'; frame-ancestors 'none'"),
 ]
 
@@ -710,6 +711,8 @@ def _static(start_response, path):
 def app(environ, start_response):
     method = environ["REQUEST_METHOD"]
     path = environ.get("PATH_INFO", "/")
+    if method == "GET" and path.startswith("/music/"):
+        return music.audio_response(environ, start_response, path)
     if method == "GET" and not path.startswith("/api/"):
         served = _static(start_response, path)
         if served is not None:
