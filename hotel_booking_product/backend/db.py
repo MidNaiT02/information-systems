@@ -53,6 +53,18 @@ def connect(path=None):
     return conn
 
 
+def protect_database(conn, path):
+    """Lightweight database protection: an append-only activity log and a private database file."""
+    for event in ("UPDATE", "DELETE"):
+        conn.execute(f"""CREATE TRIGGER IF NOT EXISTS audit_no_{event.lower()} BEFORE {event} ON audit_log
+                         BEGIN SELECT RAISE(ABORT, 'audit_log is append-only'); END""")
+    for suffix in ("", "-wal", "-shm"):             # only the owner may read or write the database files
+        try:
+            os.chmod(path + suffix, 0o600)
+        except OSError:
+            pass                                    # missing file, or a system that ignores POSIX permissions
+
+
 def init_db(path=None, reset=False, demo_data=True, today=None, records=None):
     """Create the database on first run. Returns True if a new database was created."""
     path = path or DB_PATH
@@ -82,6 +94,7 @@ def init_db(path=None, reset=False, demo_data=True, today=None, records=None):
             seed_demo_data(conn, today or date.today(), records)
             seed_loyalty_demo_accounts(conn)
         features.seed_housekeeping(conn, today or date.today())
+        protect_database(conn, path)
     finally:
         conn.close()
     return True
@@ -210,6 +223,7 @@ def migrate(path):
         # provisioned as a side effect of upgrading a production database.
         if os.environ.get("APP_ENV", "development").lower() != "production":
             seed_loyalty_demo_accounts(conn)
+        protect_database(conn, path)
     finally:
         conn.close()
 
