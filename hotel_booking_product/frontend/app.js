@@ -17,6 +17,21 @@
   const forcedTheme = document.documentElement.dataset.fixedTheme || '';
   const initialTheme = forcedTheme || localStorage.getItem('hotel-theme') || document.documentElement.dataset.theme || 'official';
   const state = { user: null, csrf: null, theme: initialTheme, afterDark: localStorage.getItem('gta-after-dark') === '1', search: null, filter: { status: '', q: '', from: '', to: '', order: 'desc', size: 50, page: 1 }, dash: { from: '', to: '' }, cal: { from: '', to: '' }, refreshAfterClose: false };
+
+  // Favorites are saved in this browser; comparison is for the current search.
+  let favoriteRooms = [];
+  let favoriteRoomDetails = {};
+  let compareRooms = [];
+  try {
+    favoriteRooms = JSON.parse(localStorage.getItem('hotel-favorite-rooms') || '[]').map(String);
+  } catch (_) {
+    favoriteRooms = [];
+  }
+  try {
+    favoriteRoomDetails = JSON.parse(localStorage.getItem('hotel-favorite-room-details') || '{}') || {};
+  } catch (_) {
+    favoriteRoomDetails = {};
+  }
   document.documentElement.dataset.theme = state.theme;
   document.documentElement.dataset.afterDark = state.afterDark ? 'true' : 'false';
  
@@ -315,9 +330,51 @@
     const mobileSearchToggle = $('#mobile-search-toggle');
     if (mobileSearchToggle) mobileSearchToggle.addEventListener('click', () => { const opened = $('#search-form').classList.toggle('is-open'); mobileSearchToggle.setAttribute('aria-expanded', String(opened)); mobileSearchToggle.textContent = opened ? 'Close' : 'Search panel'; });
     $('#results').addEventListener('click', e => {
+      if (!state.search) return;
+
+      const favoriteButton = e.target.closest('[data-favorite]');
+      if (favoriteButton) {
+        const id = String(favoriteButton.dataset.favorite);
+        if (favoriteRooms.includes(id)) {
+          favoriteRooms = favoriteRooms.filter(roomId => roomId !== id);
+          delete favoriteRoomDetails[id];
+          toast('Removed from favorites');
+        } else {
+          favoriteRooms.push(id);
+          const selectedRoom = state.search.rooms.find(room => String(room.room_id) === id);
+          if (selectedRoom) favoriteRoomDetails[id] = selectedRoom;
+          toast('Added to favorites');
+        }
+        localStorage.setItem('hotel-favorite-rooms', JSON.stringify(favoriteRooms));
+        localStorage.setItem('hotel-favorite-room-details', JSON.stringify(favoriteRoomDetails));
+        showResults();
+        return;
+      }
+
+      const compareButton = e.target.closest('[data-compare]');
+      if (compareButton) {
+        const id = String(compareButton.dataset.compare);
+        if (compareRooms.includes(id)) {
+          compareRooms = compareRooms.filter(roomId => roomId !== id);
+        } else if (compareRooms.length >= 3) {
+          toast('You can compare up to 3 rooms', 'error');
+          return;
+        } else {
+          compareRooms.push(id);
+        }
+        showResults();
+        return;
+      }
+
+      if (e.target.closest('#compare-all')) {
+        openRoomComparison();
+        return;
+      }
+
       const btn = e.target.closest('[data-book]');
-      if (!btn || !state.search) return;
-      const room = state.search.rooms.find(r => String(r.room_id) === btn.dataset.book);
+      if (!btn) return;
+      const roomId = String(btn.dataset.book);
+      const room = state.search.rooms.find(r => String(r.room_id) === roomId) || favoriteRoomDetails[roomId];
       if (room) openBooking(room);
     });
     if (s) showResults();
@@ -351,7 +408,51 @@
         <div class="amenities">Ocean view · Wi-Fi · Climate control</div>
         <div class="price"><div><strong>${money(r.total_price)}</strong><br>
           <small>${plural(nights, 'night')}, ${money(r.price_per_night)} per night</small></div>
-          <button class="btn" type="button" data-book="${esc(r.room_id)}">Book this room</button></div></div></li>`;
+          <div class="room-extra-actions">
+            <button class="btn secondary" type="button" data-favorite="${esc(r.room_id)}" aria-pressed="${favoriteRooms.includes(String(r.room_id))}">
+              ${favoriteRooms.includes(String(r.room_id)) ? '♥ Saved' : '♡ Favorite'}
+            </button>
+            <button class="btn secondary" type="button" data-compare="${esc(r.room_id)}" aria-pressed="${compareRooms.includes(String(r.room_id))}">
+              ${compareRooms.includes(String(r.room_id)) ? '✓ Selected' : '⚖ Compare'}
+            </button>
+            <button class="btn" type="button" data-book="${esc(r.room_id)}">Book this room</button>
+          </div></div></div></li>`;
+  }
+
+  function openRoomComparison() {
+    const selected = (state.search?.rooms || []).filter(room => compareRooms.includes(String(room.room_id)));
+    if (selected.length < 2) {
+      toast('Select at least two rooms to compare', 'error');
+      return;
+    }
+
+    const cell = value => `<td>${esc(value == null || value === '' ? '—' : value)}</td>`;
+    const rows = [
+      ['Room type', room => room.type_name],
+      ['Room number', room => room.room_number],
+      ['Price per night', room => money(room.price_per_night)],
+      ['Total price', room => money(room.total_price)],
+      ['Capacity', room => `${room.capacity || '—'} guests`],
+      ['Floor', room => room.floor],
+      ['Rating', room => room.average_rating ? `★ ${room.average_rating}` : 'No rating']
+    ];
+
+    const tableRows = rows.map(([label, getter]) =>
+      `<tr><th scope="row">${esc(label)}</th>${selected.map(room => cell(getter(room))).join('')}</tr>`
+    ).join('');
+    const headings = selected.map(room => `<th>${esc(room.type_name)}<br>Room ${esc(room.room_number)}</th>`).join('');
+
+    openDialog('Room comparison', `
+      <div class="table-wrap comparison-table-wrap">
+        <table class="comparison-table">
+          <thead><tr><th>Feature</th>${headings}</tr></thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </div>
+      <div class="actions">
+        <button class="btn secondary" type="button" data-close>Close</button>
+      </div>
+    `);
   }
 
   function showResults() {
@@ -389,6 +490,20 @@
       ? `<ul class="plaques">${selectedGroups.map(g => plaqueHtml(g.room, s.nights, g.free)).join('')}</ul>`
       : `<div class="notice"><b>No ${esc(s.typeFilter)} rooms are free for these dates.</b> Choose another room type or change your dates.</div>`;
 
+    // Refresh saved room details when a favorite appears in the current search.
+    s.rooms.forEach(room => {
+      const id = String(room.room_id);
+      if (favoriteRooms.includes(id)) favoriteRoomDetails[id] = room;
+    });
+    localStorage.setItem('hotel-favorite-room-details', JSON.stringify(favoriteRoomDetails));
+
+    const favoriteItems = favoriteRooms
+      .map(id => favoriteRoomDetails[id])
+      .filter(Boolean);
+    const favoritesContent = favoriteItems.length
+      ? `<ul class="plaques">${favoriteItems.map(room => plaqueHtml(room, s.nights || 1, 1)).join('')}</ul>`
+      : '<p class="meta">You have no favorite rooms yet. Press ♡ Favorite on a room to save it here.</p>';
+
     box.innerHTML = `
       <h2>Rooms</h2>
       <div class="results-tools">
@@ -403,7 +518,21 @@
           </select>
         </label>
       </div>
-      ${filteredContent}<div id="flex"></div>`;
+      ${filteredContent}
+      <section class="favorites-section panel stack" aria-label="Favorite rooms">
+        <div class="row between">
+          <h2>My Favorite Rooms</h2>
+          <span class="chip">${favoriteItems.length} saved</span>
+        </div>
+        ${favoritesContent}
+      </section>
+      <section class="room-comparison-controls" aria-label="Room comparison">
+        <p>Selected for comparison: <strong>${compareRooms.filter(id => s.rooms.some(room => String(room.room_id) === id)).length} / 3</strong></p>
+        <button class="btn" type="button" id="compare-all" ${compareRooms.filter(id => s.rooms.some(room => String(room.room_id) === id)).length < 2 ? 'disabled' : ''}>
+          Compare selected rooms
+        </button>
+      </section>
+      <div id="flex"></div>`;
 
     $('#room-type-filter').addEventListener('change', e => {
       s.typeFilter = e.target.value;
